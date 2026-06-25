@@ -1,0 +1,630 @@
+# keel CLI — File Manifest
+# Every file related to the keel CLI: what it does and when it runs.
+
+# ─────────────────────────────────────────────────────────────────────
+# Root-level project files
+# ─────────────────────────────────────────────────────────────────────
+
+root:
+  go.mod:
+    purpose: Go module definition — declares module name, Go version, and dependencies.
+    executed: At build time by the Go toolchain.
+
+  go.sum:
+    purpose: Checksums for Go module dependencies — ensures reproducible builds.
+    executed: At build time by the Go toolchain.
+
+  Makefile:
+    purpose: Build automation — targets for build, test, release (cross-compile), install, clean.
+    executed: By developer via `make build`, `make test`, `make release`.
+
+  embed.go:
+    purpose: Embeds assets/keel-template/ into the compiled binary via `//go:embed all:assets/keel-template`.
+    executed: At build time by the Go compiler.
+
+  CLAUDE.md:
+    purpose: Project instructions for Claude Code — build commands, project layout, prohibited references.
+    executed: Read by Claude Code at session start (auto-loaded).
+
+  AGENTS.md:
+    purpose: Codex agent constitution — pre-session reads, execution commands, phase discipline.
+    executed: Read by Codex at session start.
+
+  agent-rules.md:
+    purpose: Repository constitution — governs all code agent behavior, canonical sources, pre-edit checklist, tech stack.
+    executed: Read by agents before any file modification.
+
+  BUILD_MANIFEST.yaml:
+    purpose: Ordered build plan — declares all phases with number, name, goal, inputs, outputs, tasks, exit criteria.
+    executed: Read during phase execution, planning, verification, and current-phase queries.
+
+  README.md:
+    purpose: Project documentation — explains what keel is, how it works, and the phase execution model.
+    executed: Read by developers and GitHub.
+
+  DISTRIBUTION.md:
+    purpose: Release and Homebrew distribution guide — PAT setup, tap repo, automated release flow.
+    executed: Read by developers during release.
+
+# ─────────────────────────────────────────────────────────────────────
+# CLI entry point — cmd/keel/
+# ─────────────────────────────────────────────────────────────────────
+
+cmd/keel:
+  main.go:
+    purpose: CLI entry point — defines root cobra command, prints banner at PersistentPreRun, calls Execute().
+    executed: Every CLI invocation.
+
+  init.go:
+    purpose: "`keel init` command — PRD discovery, tech stack detection, harness bootstrap, session init."
+    executed: When user runs `keel init` in a project.
+
+  plan-phases.go:
+    purpose: "`keel plan-phases` command — derives build phases from TDD deliverables DAG, writes manifest and phase files."
+    executed: When user runs `keel plan-phases [--confirm]`.
+
+  phase.go:
+    purpose: "Phase lifecycle commands — `keel phase start N`, `keel phase complete N`, `keel phase failed N`."
+    executed: By agents at phase boundaries (start, complete, fail).
+
+  phase_close.go:
+    purpose: "`keel phase close N` — writes all 7 phase-closing artifacts (gate, rollback DAG, ledger, audit log, audit.jsonl, run_log.jsonl, session event) in one command."
+    executed: By agents at end of a successful or failed phase.
+
+  verify.go:
+    purpose: "`keel verify` command — verifies keel consistency in target repository."
+    executed: By agents or developers to validate harness integrity.
+
+  current-phase.go:
+    purpose: "`keel current-phase` command — reports which phases passed and which is next."
+    executed: By agents or developers to determine current build state.
+
+  session.go:
+    purpose: "`keel session start` — starts a new tracking session with owner/implementer context."
+    executed: During `keel init` or manually by developer.
+
+  event.go:
+    purpose: "`keel event append` — appends an event to the active session ledger (used by hook scripts)."
+    executed: By pre-tool/post-tool/stop hooks automatically.
+
+  report.go:
+    purpose: "`keel report session` and `keel report phase` — generates human-readable reports from session ledger."
+    executed: By developer to review session or phase activity.
+
+  rollback.go:
+    purpose: "`keel rollback N` — rolls back phase N and downstream phases. Includes `rollback write-dag` subcommand."
+    executed: By developer or agent to undo a phase.
+
+  merge-feature.go:
+    purpose: "`keel merge-feature <slug>` — merges feature BUILD_MANIFEST.yaml into project manifest."
+    executed: After feature approval via `/approve-feature`.
+
+# ─────────────────────────────────────────────────────────────────────
+# Business logic — internal/
+# ─────────────────────────────────────────────────────────────────────
+
+internal/assets:
+  assets.go:
+    purpose: Exposes embedded keel-template as io/fs.FS via KeelTemplate().
+    executed: During `keel init` to access template files.
+
+  assets_test.go:
+    purpose: Tests that KeelTemplate() returns a valid FS with expected entries.
+    executed: During `go test ./internal/assets/`.
+
+internal/audit:
+  audit.go:
+    purpose: Manages .agent/audit.jsonl — append-only project audit log with controlled event vocabulary.
+    executed: During phase close, rollback, preflight, and feature approval.
+
+  audit_test.go:
+    purpose: Tests audit record serialization and append behavior.
+    executed: During `go test ./internal/audit/`.
+
+internal/banner:
+  banner.go:
+    purpose: Prints keel startup banner with ANSI color detection (NO_COLOR, TERM, isatty).
+    executed: Every CLI invocation at PersistentPreRun.
+
+  banner_test.go:
+    purpose: Tests banner formatting and color detection.
+    executed: During `go test ./internal/banner/`.
+
+internal/bootstrap:
+  bootstrap.go:
+    purpose: Copies embedded template to project — creates directories, copies keel/, scripts/, .claude/, .codex/, docs/, writes manifest stub, phase_0 prompt, audit/ledger/gate stubs, agent logs.
+    executed: During `keel init`.
+
+  bootstrap_test.go:
+    purpose: Tests bootstrap output — verifies all expected files and directories are created.
+    executed: During `go test ./internal/bootstrap/`.
+
+internal/currentphase:
+  current_phase.go:
+    purpose: Reads BUILD_MANIFEST.yaml phases and .agent/phase_gates/ to determine next phase and report status.
+    executed: During `keel current-phase`.
+
+  current_phase_test.go:
+    purpose: Tests phase state reporting logic.
+    executed: During `go test ./internal/currentphase/`.
+
+internal/detect:
+  detect.go:
+    purpose: Scans repository for tech stack markers (go.mod, package.json, etc.) and prompts user to confirm.
+    executed: During `keel init` tech stack detection.
+
+  detect_test.go:
+    purpose: Tests tech stack marker detection.
+    executed: During `go test ./internal/detect/`.
+
+internal/gate:
+  gate.go:
+    purpose: Core gate writer — writes gate JSON, derives rollback DAG, writes build ledger, audit log, appends audit.jsonl and run_log.jsonl.
+    executed: During `keel phase close N`.
+
+  gate_test.go:
+    purpose: Tests gate writing for passed, failed, and no-criteria scenarios plus manifest name parsing.
+    executed: During `go test ./internal/gate/`.
+
+internal/generator:
+  verify_generator_test.go:
+    purpose: Verifies embedded template consistency — required files exist, banned strings absent.
+    executed: During `go test ./internal/generator/`.
+
+internal/merge:
+  merge_feature.go:
+    purpose: Merges feature manifest into project manifest — renumbers phases sequentially, appends YAML.
+    executed: During `keel merge-feature`.
+
+  merge_feature_test.go:
+    purpose: Tests feature merge logic including phase renumbering.
+    executed: During `go test ./internal/merge/`.
+
+internal/planner:
+  plan_phases.go:
+    purpose: Derives build phases from TDD deliverables via topological DAG sort — applies phase policy (isolation, ceilings, risk scoring), generates BUILD_MANIFEST.yaml and phase files.
+    executed: During `keel plan-phases`.
+
+  plan_phases_test.go:
+    purpose: Tests phase planning algorithm, policy application, and output generation.
+    executed: During `go test ./internal/planner/`.
+
+internal/prd:
+  prd.go:
+    purpose: Discovers PRD files in repository (case-insensitive, depth-limited search) and copies selected PRD to docs/PRD.md.
+    executed: During `keel init` PRD discovery.
+
+internal/rollback:
+  rollback.go:
+    purpose: Phase rollback engine — reads rollback DAGs, collects downstream phases, prints dry-run plan or executes file deletion and gate invalidation.
+    executed: During `keel rollback N`.
+
+  rollback_test.go:
+    purpose: Tests rollback DAG loading, downstream collection, plan printing, and execution.
+    executed: During `go test ./internal/rollback/`.
+
+internal/session:
+  session.go:
+    purpose: Session lifecycle management — SessionMeta, Manager, session CRUD in .agent/sessions/<id>/.
+    executed: During `keel session start`, `keel init`, and any command that writes events.
+
+  event.go:
+    purpose: Event ledger schema — controlled vocabulary (session_started, phase_started, phase_completed, etc.), EventRecord wire format.
+    executed: Whenever session events are written or read.
+
+  reduce.go:
+    purpose: State reducer — derives SessionState (lifecycle, current_phase, active_implementer) from event list.
+    executed: During report generation and state queries.
+
+  config.go:
+    purpose: Reads/writes .agent/keel/config.yaml — tracking mode, user identity, token tracking settings.
+    executed: During `keel init` and session operations.
+
+  identity.go:
+    purpose: Resolves person/agent/system identity from CLI args, git config, os/user, environment.
+    executed: During session start and event writing.
+
+  hooks.go:
+    purpose: Creates hook scripts in .agent/hooks/ (pre-tool, post-tool, stop) and registers them in .claude/settings.json.
+    executed: During `keel init` when tracking is enabled.
+
+  report.go:
+    purpose: Generates human-readable session summary from event ledger — phase summaries, event timeline.
+    executed: During `keel report session` and `keel report phase`.
+
+  session_test.go:
+    purpose: Tests session lifecycle, event writing, state reduction, and reporting.
+    executed: During `go test ./internal/session/`.
+
+internal/verify:
+  verify.go:
+    purpose: Verifies keel consistency — checks required files, rule files, command files, gate JSON schemas.
+    executed: During `keel verify`.
+
+  verify_test.go:
+    purpose: Tests verification logic for valid and invalid repository states.
+    executed: During `go test ./internal/verify/`.
+
+# ─────────────────────────────────────────────────────────────────────
+# Embedded template — assets/keel-template/
+# Copied to new projects during `keel init`.
+# ─────────────────────────────────────────────────────────────────────
+
+assets/keel-template:
+  agent-rules.md:
+    purpose: Template repository constitution — copied to project root as agent-rules.md.
+    executed: During `keel init` (copy). Read by agents before file modifications.
+
+  AGENTS.md:
+    purpose: Template Codex agent constitution — copied to project root as AGENTS.md.
+    executed: During `keel init` (copy). Read by Codex at session start.
+
+  keel/README.md:
+    purpose: Canonical harness reference — repository layout, feature workflow, phase execution model, canonical file names.
+    executed: During `keel init` (copy). Read by agents before every phase.
+
+  keel/skills.md:
+    purpose: Harness skills documentation — Phase 0 rules, operational expectations.
+    executed: During `keel init` (copy). Read by agents during Phase 0.
+
+  keel/commands/keel-run.md:
+    purpose: "/keel-run N slash command — execute one build phase with full governance (read rules, validate scope, TDD workflow, drift, gate)."
+    executed: During `keel init` (copy). Invoked by agent via `/keel-run N`.
+
+  keel/commands/new-feature.md:
+    purpose: /new-feature slash command — draft feature workspace with PRD, TDD, manifest, status.
+    executed: During `keel init` (copy). Invoked by agent via `/new-feature`.
+
+  keel/commands/approve-feature.md:
+    purpose: /approve-feature slash command — merge feature phases into project manifest.
+    executed: During `keel init` (copy). Invoked by agent via `/approve-feature`.
+
+  keel/commands/verify.md:
+    purpose: /verify slash command — run harness verification scripts.
+    executed: During `keel init` (copy). Invoked by agent via `/verify`.
+
+  keel/commands/preflight.md:
+    purpose: /preflight slash command — run preflight checks before phase starts.
+    executed: During `keel init` (copy). Invoked by agent via `/preflight`.
+
+  keel/commands/rollback-phase.md:
+    purpose: /rollback-phase slash command — undo a phase and downstream phases.
+    executed: During `keel init` (copy). Invoked by agent via `/rollback-phase`.
+
+  keel/rules/phase-state.md:
+    purpose: "Rule: gate files define phase execution state — lowest manifest phase without passed gate is next."
+    executed: During `keel init` (copy). Enforced by agents during phase execution.
+
+  keel/rules/gates.md:
+    purpose: "Rule: passed gate requirements (schema fields, exit criteria, command entries) and failed gate handling."
+    executed: During `keel init` (copy). Enforced at phase completion.
+
+  keel/rules/audit-ledger.md:
+    purpose: "Rule: append-only audit and ledger record management."
+    executed: During `keel init` (copy). Enforced at phase completion.
+
+  keel/rules/allowed-paths.md:
+    purpose: "Rule: boundary definitions for agent edits — which paths can be modified per phase."
+    executed: During `keel init` (copy). Enforced during file modifications.
+
+  keel/rules/stale-plan.md:
+    purpose: "Rule: detection and handling of stale build plans."
+    executed: During `keel init` (copy). Checked before phase execution.
+
+  keel/rules/pre-flight.md:
+    purpose: "Rule: pre-phase validation requirements."
+    executed: During `keel init` (copy). Checked before phase execution.
+
+  keel/rules/drift-checkpoints.md:
+    purpose: "Rule: drift detection between expected and actual state after each green task."
+    executed: During `keel init` (copy). Enforced during phase execution.
+
+  keel/rules/retry-rollback.md:
+    purpose: "Rule: handling retries and rollback DAG logic."
+    executed: During `keel init` (copy). Enforced on phase failure.
+
+  keel/rules/tdd-builder.md:
+    purpose: "Rule: procedure for generating docs/TDD.md from docs/PRD.md — tech stack resolution, deliverables extraction."
+    executed: During `keel init` (copy). Followed during Phase 0 to create TDD.
+
+  keel/hooks/preflight.sh:
+    purpose: Creates .agent/ directories and runs preflight_context.py.
+    executed: During `keel init` (copy). Run as Phase 0 exit criterion.
+
+  keel/scripts/verify_repo.py:
+    purpose: Full repository verification — checks required files, rule files, command files, gate JSON schemas.
+    executed: During `keel init` (copy). Run by `keel verify` and verification scripts.
+
+  keel/scripts/verify_phase0.py:
+    purpose: Phase 0 harness verification — checks required harness files exist.
+    executed: During `keel init` (copy). Run as Phase 0 exit criterion.
+
+  keel/scripts/current_phase.py:
+    purpose: Reports which phase is next — reads manifest and gate files.
+    executed: During `keel init` (copy). Run by `keel current-phase` and scripts.
+
+  keel/scripts/preflight_context.py:
+    purpose: Captures pre-phase tooling context — tool versions, OS info, environment.
+    executed: During `keel init` (copy). Run by preflight.sh.
+
+  keel/scripts/validate_workflows.py:
+    purpose: Validates .github/workflows/*.yml files have required YAML markers.
+    executed: During `keel init` (copy). Run during CI validation.
+
+  keel/scripts/merge_feature.py:
+    purpose: Merges feature manifest into project manifest (Python version).
+    executed: During `keel init` (copy). Called by merge-feature command.
+
+  scripts/verify.sh:
+    purpose: Verification wrapper — routes to verify_phase0.sh, current_phase.sh, or verify_repo.py.
+    executed: During `keel init` (copy). Run by agents and developers for verification.
+
+  scripts/verify_phase0.sh:
+    purpose: Phase 0 verification — delegates to keel/scripts/verify_phase0.py.
+    executed: During `keel init` (copy). Run as Phase 0 exit criterion.
+
+  scripts/current_phase.sh:
+    purpose: Current phase reporter — delegates to keel/scripts/current_phase.py.
+    executed: During `keel init` (copy). Run to check build progress.
+
+  scripts/merge_feature.py:
+    purpose: Feature merge script — finds phases, renumbers, appends to project manifest.
+    executed: During `keel init` (copy). Called by merge-feature operations.
+
+  docs/phases/phase_0.md:
+    purpose: Phase 0 build prompt template — objective, inputs, outputs, steps, exit criteria for harness bootstrap.
+    executed: During `keel init` (copy). Read by agent during Phase 0 execution.
+
+  docs/TDD.template.md:
+    purpose: TDD template with placeholder sections — overview, tech stack, architecture, data model, API, key flows.
+    executed: During `keel init` (copy). Used as starting point for TDD generation.
+
+  .claude/commands/keel-run.md:
+    purpose: Claude Code adapter for /keel-run — points to keel/commands/keel-run.md as canonical source.
+    executed: During `keel init` (copy). Registered as Claude Code slash command.
+
+  .claude/commands/new-feature.md:
+    purpose: Claude Code adapter for /new-feature.
+    executed: During `keel init` (copy). Registered as Claude Code slash command.
+
+  .claude/commands/approve-feature.md:
+    purpose: Claude Code adapter for /approve-feature.
+    executed: During `keel init` (copy). Registered as Claude Code slash command.
+
+  .claude/commands/rollback-phase.md:
+    purpose: Claude Code adapter for /rollback-phase.
+    executed: During `keel init` (copy). Registered as Claude Code slash command.
+
+  .codex/README.md:
+    purpose: Explains .codex/commands/ are adapters — Codex does not use settings.json or $ARGUMENTS.
+    executed: During `keel init` (copy). Read by Codex.
+
+  .codex/commands/keel-run.md:
+    purpose: Codex adapter for /keel-run.
+    executed: During `keel init` (copy). Registered as Codex command.
+
+  .codex/commands/new-feature.md:
+    purpose: Codex adapter for /new-feature.
+    executed: During `keel init` (copy). Registered as Codex command.
+
+  .codex/commands/approve-feature.md:
+    purpose: Codex adapter for /approve-feature.
+    executed: During `keel init` (copy). Registered as Codex command.
+
+  .codex/commands/rollback-phase.md:
+    purpose: Codex adapter for /rollback-phase.
+    executed: During `keel init` (copy). Registered as Codex command.
+
+  .codex/commands/harness-plan.md:
+    purpose: Codex adapter for /harness-plan — generates or refreshes harness planning.
+    executed: During `keel init` (copy). Registered as Codex command.
+
+# ─────────────────────────────────────────────────────────────────────
+# Repo-root harness — keel/
+# These are the keel project's own harness files (keel governs itself).
+# ─────────────────────────────────────────────────────────────────────
+
+keel:
+  README.md:
+    purpose: Canonical harness reference — repo layout, feature workflow, phase model, canonical file names.
+    executed: Read by agents before every phase.
+
+  skills.md:
+    purpose: Harness skills — Phase 0 rules, operational expectations (bash set -euo pipefail, fail loudly).
+    executed: Read by agents during Phase 0.
+
+  commands/keel-run.md:
+    purpose: "/keel-run N — full phase execution governance including Phase Completion Checklist with `keel phase close`."
+    executed: Invoked by agent via `/keel-run N`.
+
+  commands/new-feature.md:
+    purpose: /new-feature — draft feature workspace (PRD, TDD, manifest, status) without modifying project manifest.
+    executed: Invoked by agent via `/new-feature`.
+
+  commands/approve-feature.md:
+    purpose: /approve-feature — merge feature phases into project manifest, renumber, generate phase build files.
+    executed: Invoked by agent via `/approve-feature`.
+
+  commands/verify.md:
+    purpose: /verify — run harness verification (preflight.sh, verify_repo.py, verify_phase0.sh).
+    executed: Invoked by agent via `/verify`.
+
+  commands/preflight.md:
+    purpose: /preflight — run preflight checks before phase starts.
+    executed: Invoked by agent via `/preflight`.
+
+  commands/rollback-phase.md:
+    purpose: /rollback-phase — undo a phase and downstream phases via keel rollback.
+    executed: Invoked by agent via `/rollback-phase`.
+
+  rules/phase-state.md:
+    purpose: "Rule: gate files in .agent/phase_gates/ define execution state."
+    executed: Enforced by agents during phase execution.
+
+  rules/gates.md:
+    purpose: "Rule: gate schema requirements for passed and failed gates."
+    executed: Enforced at phase completion.
+
+  rules/audit-ledger.md:
+    purpose: "Rule: append-only audit and build ledger management."
+    executed: Enforced at phase completion.
+
+  rules/allowed-paths.md:
+    purpose: "Rule: agents may only modify files within phase-declared allowed paths."
+    executed: Enforced during file modifications.
+
+  rules/stale-plan.md:
+    purpose: "Rule: detect stale phase files by comparing against manifest and PRD/TDD."
+    executed: Checked before phase execution.
+
+  rules/pre-flight.md:
+    purpose: "Rule: pre-phase validation — read required files, verify phase exists in manifest."
+    executed: Checked before phase execution.
+
+  rules/drift-checkpoints.md:
+    purpose: "Rule: create drift checkpoint after each green task."
+    executed: Enforced during phase execution.
+
+  rules/retry-rollback.md:
+    purpose: "Rule: retry and rollback DAG logic on phase failure."
+    executed: Enforced on phase failure.
+
+  rules/tdd-builder.md:
+    purpose: "Rule: generate TDD from PRD — resolve tech stack (check agent-rules.md first), extract deliverables."
+    executed: Followed during Phase 0 to create docs/TDD.md.
+
+  hooks/preflight.sh:
+    purpose: Creates .agent/ directories and runs preflight_context.py.
+    executed: Run via `bash keel/hooks/preflight.sh` as Phase 0 exit criterion.
+
+  scripts/verify_repo.py:
+    purpose: Full repository verification — required files, rules, commands, gate schemas.
+    executed: Run via `python3 keel/scripts/verify_repo.py .` during verification.
+
+  scripts/verify_phase0.py:
+    purpose: Phase 0 harness verification.
+    executed: Run via scripts/verify_phase0.sh as Phase 0 exit criterion.
+
+  scripts/current_phase.py:
+    purpose: Reports next phase from manifest and gate files.
+    executed: Run via scripts/current_phase.sh.
+
+  scripts/preflight_context.py:
+    purpose: Captures tooling context (tool versions, OS, environment) to .agent/preflight_context.md.
+    executed: Run by preflight.sh during Phase 0.
+
+  scripts/validate_workflows.py:
+    purpose: Validates .github/workflows/ YAML files have required markers.
+    executed: Run during CI validation.
+
+  scripts/merge_feature.py:
+    purpose: Feature manifest merge (Python version).
+    executed: Called by merge-feature operations.
+
+# ─────────────────────────────────────────────────────────────────────
+# Repo-root scripts — scripts/
+# ─────────────────────────────────────────────────────────────────────
+
+scripts:
+  verify.sh:
+    purpose: Verification wrapper — routes to verify_phase0.sh (--quick), current_phase.sh (--current-phase), or verify_repo.py.
+    executed: By agents and developers during verification.
+
+  verify_phase0.sh:
+    purpose: Phase 0 verification — delegates to keel/scripts/verify_phase0.py.
+    executed: As Phase 0 exit criterion.
+
+  current_phase.sh:
+    purpose: Current phase reporter — delegates to keel/scripts/current_phase.py.
+    executed: To check build progress.
+
+  merge_feature.py:
+    purpose: Feature merge script — renumbers feature phases and appends to project manifest.
+    executed: By `keel merge-feature` and directly by agents.
+
+# ─────────────────────────────────────────────────────────────────────
+# Claude Code integration — .claude/
+# ─────────────────────────────────────────────────────────────────────
+
+.claude:
+  settings.local.json:
+    purpose: Claude Code permissions — allowlisted Bash commands (keel, go, python3, bash scripts) and Read paths.
+    executed: Read by Claude Code at session start to configure permissions.
+
+  commands/keel-run.md:
+    purpose: Claude Code adapter for /keel-run — points to keel/commands/keel-run.md.
+    executed: Registered as `/keel-run` slash command in Claude Code.
+
+  commands/new-feature.md:
+    purpose: Claude Code adapter for /new-feature.
+    executed: Registered as `/new-feature` slash command in Claude Code.
+
+  commands/approve-feature.md:
+    purpose: Claude Code adapter for /approve-feature.
+    executed: Registered as `/approve-feature` slash command in Claude Code.
+
+# ─────────────────────────────────────────────────────────────────────
+# Codex integration — .codex/
+# ─────────────────────────────────────────────────────────────────────
+
+.codex:
+  README.md:
+    purpose: Explains .codex/commands/ are adapters — Codex uses shell tools directly, no settings.json.
+    executed: Read by Codex.
+
+  commands/keel-run.md:
+    purpose: Codex adapter for /keel-run.
+    executed: Registered as Codex command.
+
+  commands/new-feature.md:
+    purpose: Codex adapter for /new-feature.
+    executed: Registered as Codex command.
+
+  commands/approve-feature.md:
+    purpose: Codex adapter for /approve-feature.
+    executed: Registered as Codex command.
+
+  commands/rollback-phase.md:
+    purpose: Codex adapter for /rollback-phase.
+    executed: Registered as Codex command.
+
+  commands/harness-plan.md:
+    purpose: Codex adapter for /harness-plan — generates or refreshes harness planning.
+    executed: Registered as Codex command.
+
+# ─────────────────────────────────────────────────────────────────────
+# Documentation and audit records — docs/
+# ─────────────────────────────────────────────────────────────────────
+
+docs:
+  PRD.md:
+    purpose: Product Requirements Document — starting point for Phase 0. Describes product goals, user stories, acceptance criteria.
+    executed: Read during Phase 0 and phase planning.
+
+  TDD.template.md:
+    purpose: Technical Design Document template — placeholder sections for overview, tech stack, architecture, data model, API.
+    executed: Used as starting point during TDD generation in Phase 0.
+
+  index.html:
+    purpose: Interactive web dashboard for keel — phase status, gate records, audit timeline.
+    executed: Opened in browser by developer.
+
+  phases/phase_0.md:
+    purpose: Phase 0 build prompt — objective, inputs, outputs, steps, exit criteria for harness bootstrap.
+    executed: Read by agent during Phase 0 execution.
+
+  phases/phase_0.prompt.md:
+    purpose: Phase 0 harness-only prompt — tells agent to generate harness only, no product code.
+    executed: Read by agent during Phase 0.
+
+  audit/phase_0.log:
+    purpose: Phase 0 human-readable audit log — timestamp, agent, actions, verification, gate result.
+    executed: Written by `keel phase close 0`. Read by developers for audit review.
+
+  build-ledger/phase_0_build.md:
+    purpose: Phase 0 build ledger — model, summary, files, commands, status.
+    executed: Written by `keel phase close 0`. Read by developers for build review.
+
+  decisions/:
+    purpose: Architecture Decision Records (ADRs) — written when significant architectural decisions are made.
+    executed: Written during phase execution when needed. Read for historical context.

@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc data-props='{"background":{"editor":"enum","options":["Rhumb lines","Soundings","Passage plot","Sea chart","Chart + code"],"default":"Rhumb lines","tsType":"string"}}'>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; }
+  body{ background:#070b12; color:#eef2f8; font-family:'IBM Plex Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  ::selection{ background:rgba(47,109,255,0.32); }
+  @keyframes blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+  @keyframes keelRun {
+    0%{left:6%;opacity:0} 6%{opacity:1} 17%{left:6%}
+    27%{left:35.333%} 39%{left:35.333%}
+    49%{left:64.667%} 61%{left:64.667%}
+    71%{left:94%} 87%{left:94%;opacity:1}
+    100%{left:94%;opacity:0}
+  }
+  @keyframes nodePulse { 0%,100%{ box-shadow:0 0 0 0 rgba(47,109,255,0);} 50%{ box-shadow:0 0 0 7px rgba(47,109,255,0.10);} }
+  @keyframes lineFlow { 0%{background-position:0% 0} 100%{background-position:-200% 0} }
+  @keyframes auditFade { 0%{opacity:0;transform:translateY(5px)} 100%{opacity:1;transform:none} }
+  @keyframes floatY { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+  @keyframes glowPulse { 0%,100%{opacity:.45} 50%{opacity:.95} }
+  @keyframes dotPulse { 0%,100%{transform:translateX(-50%) rotate(45deg) scale(1);opacity:.55} 50%{transform:translateX(-50%) rotate(45deg) scale(1.5);opacity:1} }
+  @keyframes keelReveal { from{opacity:0; transform:translateY(16px);} to{opacity:1; transform:none;} }
+  @keyframes roseSpin { from{ transform:rotate(0deg);} to{ transform:rotate(360deg);} }
+</style>
+</helmet>
+
+<div style="position:relative; min-height:100vh; overflow:hidden; background:#070b12;">
+
+  <!-- nautical chart backdrop -->
+  <!-- 0 · Chart + code (nautical chart woven with keel source) -->
+  <sc-if value="{{ bgCode }}" hint-placeholder-val="{{ true }}">
+    <div style="position:absolute; inset:0; pointer-events:none; mask-image:linear-gradient(180deg,#000 0%,#000 56%,transparent 93%); -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 56%,transparent 93%);">
+      <!-- chart grid -->
+      <div style="position:absolute; inset:0; background-image:linear-gradient(rgba(120,150,200,0.032) 1px,transparent 1px),linear-gradient(90deg,rgba(120,150,200,0.032) 1px,transparent 1px); background-size:66px 66px;"></div>
+      <!-- bearing fan -->
+      <div style="position:absolute; inset:0; background:repeating-conic-gradient(from 0deg at 88% 9%, rgba(130,160,210,0.07) 0deg 0.32deg, transparent 0.32deg 11.25deg);"></div>
+      <div style="position:absolute; inset:0; background:repeating-conic-gradient(from 6deg at 14% 78%, rgba(130,160,210,0.045) 0deg 0.3deg, transparent 0.3deg 11.25deg);"></div>
+
+      <svg viewBox="0 0 1440 780" preserveAspectRatio="none" style="position:absolute; top:0; left:0; width:100%; height:820px;" fill="none">
+        <!-- isobath + course line -->
+        <path d="M150 470 C 240 400, 430 405, 520 470 C 580 514, 500 580, 392 575" stroke="rgba(130,160,210,0.16)" stroke-width="1.1"/>
+        <path d="M120 500 L470 360 L820 410 L1180 235" stroke="rgba(47,109,255,0.28)" stroke-width="1.5" stroke-dasharray="8 8"/>
+        <path d="M470 360 l7 7 -7 7 -7 -7 Z" fill="#070b12" stroke="rgba(47,109,255,0.5)" stroke-width="1.3"/>
+        <path d="M820 410 l7 7 -7 7 -7 -7 Z" fill="#070b12" stroke="rgba(47,109,255,0.5)" stroke-width="1.3"/>
+        <circle cx="120" cy="500" r="5" fill="rgba(45,212,191,0.65)"/>
+        <circle cx="1180" cy="235" r="5" fill="none" stroke="rgba(47,109,255,0.55)" stroke-width="1.5"/>
+
+        <!-- coastline (pale landmass, far right like a chart edge) -->
+        <path d="M1300 60 C 1250 130, 1300 190, 1268 250 C 1240 305, 1180 330, 1196 392 C 1208 440, 1170 486, 1210 540 L 1440 540 L 1440 60 Z" fill="rgba(150,176,210,0.025)" stroke="rgba(150,176,210,0.12)" stroke-width="1"/>
+        <path d="M1268 250 C 1300 262, 1320 250, 1336 268" stroke="rgba(150,176,210,0.10)" stroke-width="0.8" fill="none"/>
+
+        <!-- bearings -->
+        <g fill="rgba(140,165,205,0.26)" font-family="Georgia,'Times New Roman',serif" font-style="italic" font-size="14">
+          <text x="282" y="424">338°</text><text x="632" y="384">082°</text><text x="985" y="318">047°</text>
+        </g>
+      </svg>
+
+      <!-- dense depth-sounding field (CSS-positioned for reliable rendering) -->
+      <sc-for list="{{ soundings }}" as="s" hint-placeholder-count="0">
+        <div style="position:absolute; left:{{ s.x }}%; top:{{ s.y }}px; transform:translate(-50%,-50%); font-family:Georgia,'Times New Roman',serif; font-style:italic; font-size:12px; color:rgba(154,180,216,0.5); pointer-events:none; white-space:nowrap;">{{ s.v }}</div>
+      </sc-for>
+
+      <!-- keel source, woven behind the hero like chart insets -->
+      <div style="position:absolute; left:24px; top:120px; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.75; white-space:pre; color:rgba(150,176,220,0.18);">
+<span style="color:rgba(138,172,255,0.34);">func</span> (h *Harness) RunPhase(n <span style="color:rgba(138,172,255,0.34);">int</span>) <span style="color:rgba(138,172,255,0.34);">error</span> {
+    rules := h.Load(<span style="color:rgba(45,212,191,0.32);">"agent-rules.md"</span>)
+    gate  := h.gates[n]
+    <span style="color:rgba(138,172,255,0.34);">if</span> err := gate.Verify(rules); err != <span style="color:rgba(138,172,255,0.34);">nil</span> {
+        <span style="color:rgba(138,172,255,0.34);">return</span> fmt.Errorf(<span style="color:rgba(45,212,191,0.32);">"phase %d: %w"</span>, n, err)
+    }
+    h.ledger.Append(Event{Phase: n})
+    <span style="color:rgba(138,172,255,0.34);">return</span> h.snapshot.Write(n)
+}</div>
+      <div style="position:absolute; left:432px; top:88px; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.75; white-space:pre; color:rgba(150,176,220,0.30);">
+<span style="color:rgba(138,172,255,0.36);">type</span> Gate <span style="color:rgba(138,172,255,0.36);">struct</span> {
+    Phase    <span style="color:rgba(138,172,255,0.36);">int</span>
+    Criteria []Check
+    Passed   <span style="color:rgba(138,172,255,0.36);">bool</span>
+}</div>
+
+      <!-- compass rose -->
+      <div style="position:absolute; left:88%; top:9%; width:290px; height:290px; transform:translate(-50%,-50%);">
+        <svg viewBox="0 0 100 100" width="290" height="290" fill="none" style="display:block; animation:roseSpin 165s linear infinite;">
+          <circle cx="50" cy="50" r="46" stroke="rgba(130,160,210,0.24)" stroke-width="0.7" stroke-dasharray="0.7 3.31"/>
+          <circle cx="50" cy="50" r="39" stroke="rgba(130,160,210,0.14)" stroke-width="0.5"/>
+          <circle cx="50" cy="50" r="31" stroke="rgba(130,160,210,0.11)" stroke-width="0.5"/>
+          <g stroke="rgba(130,160,210,0.12)" stroke-width="0.4"><line x1="50" y1="4" x2="50" y2="96"/><line x1="4" y1="50" x2="96" y2="50"/><line x1="20" y1="20" x2="80" y2="80"/><line x1="80" y1="20" x2="20" y2="80"/></g>
+          <path d="M50 9 L57 43 L50 50 L43 43 Z" fill="rgba(47,109,255,0.55)"/>
+          <path d="M50 91 L43 57 L50 50 L57 57 Z" fill="rgba(159,178,214,0.3)"/>
+          <path d="M9 50 L43 43 L50 50 L43 57 Z" fill="rgba(159,178,214,0.24)"/>
+          <path d="M91 50 L57 57 L50 50 L57 43 Z" fill="rgba(159,178,214,0.24)"/>
+        </svg>
+      </div>
+    </div>
+  </sc-if>
+  <!-- 1 · Rhumb lines (compass rose + bearing fan) -->
+  <sc-if value="{{ bgRhumb }}" hint-placeholder-val="{{ true }}">
+    <div style="position:absolute; inset:0; pointer-events:none; mask-image:linear-gradient(180deg,#000 0%,#000 54%,transparent 92%); -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 54%,transparent 92%);">
+      <div style="position:absolute; inset:0; background-image:linear-gradient(rgba(120,150,200,0.035) 1px,transparent 1px),linear-gradient(90deg,rgba(120,150,200,0.035) 1px,transparent 1px); background-size:68px 68px;"></div>
+      <div style="position:absolute; inset:0; background:repeating-conic-gradient(from 0deg at 90% 8%, rgba(130,160,210,0.085) 0deg 0.34deg, transparent 0.34deg 11.25deg);"></div>
+      <div style="position:absolute; inset:0; background:repeating-conic-gradient(from 5.6deg at 18% 74%, rgba(130,160,210,0.05) 0deg 0.3deg, transparent 0.3deg 11.25deg);"></div>
+      <svg viewBox="0 0 1440 760" preserveAspectRatio="xMidYMid slice" style="position:absolute; inset:0; width:100%; height:100%;" fill="none">
+        <g fill="rgba(146,172,212,0.3)" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-size="15">
+          <text x="150" y="160">12</text><text x="262" y="232">9</text><text x="120" y="320">15</text><text x="356" y="300">7</text><text x="232" y="408">11</text>
+        </g>
+      </svg>
+      </svg>
+    </div>
+  </sc-if>
+  <!-- 2 · Soundings (isobaths + depth figures) -->
+  <sc-if value="{{ bgDepth }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute; inset:0; pointer-events:none; mask-image:linear-gradient(180deg,#000 0%,#000 56%,transparent 94%); -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 56%,transparent 94%);">
+      <div style="position:absolute; inset:0; background-image:linear-gradient(rgba(120,150,200,0.028) 1px,transparent 1px),linear-gradient(90deg,rgba(120,150,200,0.028) 1px,transparent 1px); background-size:84px 84px;"></div>
+      <svg viewBox="0 0 1440 760" preserveAspectRatio="xMidYMid slice" style="position:absolute; inset:0; width:100%; height:100%;" fill="none">
+        <g stroke="rgba(130,160,210,0.3)" stroke-width="1.2">
+          <path d="M210 360 C 280 280, 470 280, 540 360 C 590 420, 500 500, 380 495 C 290 490, 150 440, 210 360 Z"/>
+          <path d="M275 365 C 325 315, 445 315, 480 366 C 512 410, 450 460, 372 456 C 312 452, 240 420, 275 365 Z"/>
+          <path d="M330 372 C 360 345, 425 345, 446 374 C 462 402, 422 432, 376 430 C 344 428, 308 408, 330 372 Z"/>
+        </g>
+        <g stroke="rgba(130,160,210,0.2)" stroke-width="1.1" fill="none">
+          <path d="M900 200 C 1010 170, 1180 230, 1240 340 C 1290 430, 1180 520, 1040 500"/>
+          <path d="M940 250 C 1030 228, 1160 280, 1205 360"/>
+        </g>
+        <g fill="rgba(150,176,216,0.4)" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-size="17">
+          <text x="150" y="150">18</text><text x="262" y="230">14</text><text x="386" y="332">3</text><text x="332" y="408">5</text><text x="190" y="430">9</text>
+          <text x="470" y="250">11</text><text x="560" y="430">7</text><text x="610" y="170">21</text><text x="86" y="300">23</text><text x="700" y="320">16</text>
+          <text x="1040" y="360">6</text><text x="1130" y="300">8</text><text x="980" y="450">12</text><text x="1180" y="430">4</text>
+        </g>
+      </svg>
+    </div>
+  </sc-if>
+  <!-- 3 · Passage plot (course laid off) -->
+  <sc-if value="{{ bgRoute }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute; inset:0; pointer-events:none; mask-image:linear-gradient(180deg,#000 0%,#000 54%,transparent 92%); -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 54%,transparent 92%);">
+      <div style="position:absolute; inset:0; background-image:linear-gradient(rgba(120,150,200,0.035) 1px,transparent 1px),linear-gradient(90deg,rgba(120,150,200,0.035) 1px,transparent 1px); background-size:64px 64px;"></div>
+      <svg viewBox="0 0 1440 760" preserveAspectRatio="xMidYMid slice" style="position:absolute; inset:0; width:100%; height:100%;" fill="none">
+        <path d="M120 470 L470 330 L820 380 L1180 200" stroke="rgba(47,109,255,0.3)" stroke-width="1.6" stroke-dasharray="8 8"/>
+        <g fill="#070b12" stroke="rgba(47,109,255,0.55)" stroke-width="1.4">
+          <path d="M470 330 l7 7 -7 7 -7 -7 Z"/>
+          <path d="M820 380 l7 7 -7 7 -7 -7 Z"/>
+        </g>
+        <circle cx="120" cy="470" r="5" fill="rgba(45,212,191,0.7)"/>
+        <circle cx="1180" cy="200" r="5" fill="none" stroke="rgba(47,109,255,0.6)" stroke-width="1.6"/>
+        <g fill="rgba(140,165,205,0.32)" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-size="14">
+          <text x="280" y="392">338°</text><text x="630" y="350">082°</text><text x="985" y="280">047°</text>
+        </g>
+        <g fill="rgba(142,168,208,0.2)" font-family="Georgia, serif" font-style="italic" font-size="15">
+          <text x="200" y="250">12</text><text x="560" y="220">9</text><text x="900" y="470">7</text>
+        </g>
+      </svg>
+      <div style="position:absolute; left:15%; top:66%; width:180px; height:180px; transform:translate(-50%,-50%);">
+        <svg viewBox="0 0 100 100" width="180" height="180" fill="none" style="display:block;">
+          <circle cx="50" cy="50" r="46" stroke="rgba(130,160,210,0.16)" stroke-width="0.7" stroke-dasharray="0.7 3.31"/>
+          <circle cx="50" cy="50" r="38" stroke="rgba(130,160,210,0.10)" stroke-width="0.5"/>
+          <path d="M50 11 L56 44 L50 50 L44 44 Z" fill="rgba(47,109,255,0.45)"/>
+          <path d="M50 89 L44 56 L50 50 L56 56 Z" fill="rgba(159,178,214,0.22)"/>
+          <path d="M11 50 L44 44 L50 50 L44 56 Z" fill="rgba(159,178,214,0.18)"/>
+          <path d="M89 50 L56 56 L50 50 L56 44 Z" fill="rgba(159,178,214,0.18)"/>
+        </svg>
+      </div>
+    </div>
+  </sc-if>
+  <!-- 4 · Sea chart (full composition) -->
+  <sc-if value="{{ bgTopo }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute; inset:0; pointer-events:none; mask-image:linear-gradient(180deg,#000 0%,#000 56%,transparent 93%); -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 56%,transparent 93%);">
+      <div style="position:absolute; inset:0; background-image:linear-gradient(rgba(120,150,200,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(120,150,200,0.03) 1px,transparent 1px); background-size:60px 60px;"></div>
+      <div style="position:absolute; inset:0; background:repeating-conic-gradient(from 0deg at 90% 9%, rgba(130,160,210,0.06) 0deg 0.3deg, transparent 0.3deg 11.25deg);"></div>
+      <svg viewBox="0 0 1440 760" preserveAspectRatio="xMidYMid slice" style="position:absolute; inset:0; width:100%; height:100%;" fill="none">
+        <g stroke="rgba(130,160,210,0.18)" stroke-width="1.1">
+          <path d="M210 380 C 280 300, 450 300, 520 380 C 568 438, 480 512, 366 506 C 280 500, 150 458, 210 380 Z"/>
+          <path d="M278 386 C 326 338, 438 338, 470 387 C 500 428, 442 474, 368 470 C 312 466, 244 436, 278 386 Z"/>
+        </g>
+        <path d="M120 540 L470 400 L820 450" stroke="rgba(47,109,255,0.3)" stroke-width="1.5" stroke-dasharray="8 8"/>
+        <path d="M470 400 l7 7 -7 7 -7 -7 Z" fill="#070b12" stroke="rgba(47,109,255,0.55)" stroke-width="1.3"/>
+        <g fill="rgba(146,172,212,0.3)" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-size="15">
+          <text x="150" y="170">14</text><text x="288" y="252">9</text><text x="360" y="430">4</text><text x="220" y="452">7</text><text x="600" y="250">18</text><text x="640" y="430">11</text>
+        </g>
+      </svg>
+      <div style="position:absolute; left:90%; top:9%; width:290px; height:290px; transform:translate(-50%,-50%);">
+        <svg viewBox="0 0 100 100" width="290" height="290" fill="none" style="display:block; animation:roseSpin 170s linear infinite;">
+          <circle cx="50" cy="50" r="46" stroke="rgba(130,160,210,0.25)" stroke-width="0.7" stroke-dasharray="0.7 3.31"/>
+          <circle cx="50" cy="50" r="39" stroke="rgba(130,160,210,0.15)" stroke-width="0.5"/>
+          <circle cx="50" cy="50" r="31" stroke="rgba(130,160,210,0.12)" stroke-width="0.5"/>
+          <g stroke="rgba(130,160,210,0.13)" stroke-width="0.4"><line x1="50" y1="4" x2="50" y2="96"/><line x1="4" y1="50" x2="96" y2="50"/></g>
+          <path d="M50 10 L57 43 L50 50 L43 43 Z" fill="rgba(47,109,255,0.6)"/>
+          <path d="M50 90 L43 57 L50 50 L57 57 Z" fill="rgba(159,178,214,0.3)"/>
+          <path d="M10 50 L43 43 L50 50 L43 57 Z" fill="rgba(159,178,214,0.26)"/>
+          <path d="M90 50 L57 57 L50 50 L57 43 Z" fill="rgba(159,178,214,0.26)"/>
+        </svg>
+      </div>
+    </div>
+  </sc-if>
+  <div style="position:absolute; top:-180px; left:50%; transform:translateX(-30%); width:1100px; height:760px; pointer-events:none; background:radial-gradient(closest-side,rgba(47,109,255,0.20),transparent 72%); filter:blur(8px);"></div>
+  <div style="position:absolute; top:120px; right:-180px; width:680px; height:680px; pointer-events:none; background:radial-gradient(closest-side,rgba(139,155,255,0.12),transparent 72%);"></div>
+
+  <!-- NAV -->
+  <nav style="position:sticky; top:0; z-index:50; backdrop-filter:blur(14px); background:rgba(7,11,18,0.72); border-bottom:1px solid rgba(120,140,180,0.10);">
+    <div style="max-width:1200px; margin:0 auto; padding:15px 28px; display:flex; align-items:center; justify-content:space-between; gap:24px;">
+      <div style="display:flex; align-items:center; gap:11px;">
+        <svg width="27" height="27" viewBox="0 0 32 32" fill="none" aria-hidden="true" style="display:block;">
+          <circle cx="16" cy="16" r="13.4" stroke="#e9eef7" stroke-width="1.9"/>
+          <path d="M16 6.2 L21 17 L16 14.4 L11 17 Z" fill="#2f6dff"/>
+          <path d="M11.2 19 L16 25.8 L20.8 19 L16 21.4 Z" fill="#9fb2d6"/>
+        </svg>
+        <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:20px; letter-spacing:-0.02em;"><span style="color:#2f6dff;">k</span>eel</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:30px;">
+        <div style="display:flex; gap:26px; font-size:14.5px; color:#9aa7bd;">
+          <a href="#how" style="color:inherit; text-decoration:none; transition:color .2s;" style-hover="color:#eef2f8;">How it works</a>
+          <a href="#demo" style="color:inherit; text-decoration:none; transition:color .2s;" style-hover="color:#eef2f8;">Live demo</a>
+          <a href="#commands" style="color:inherit; text-decoration:none; transition:color .2s;" style-hover="color:#eef2f8;">Commands</a>
+          <a href="#install" style="color:inherit; text-decoration:none; transition:color .2s;" style-hover="color:#eef2f8;">Install</a>
+        </div>
+        <a href="#install" style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14.5px; color:#fff; background:#2f6dff; padding:9px 16px; border-radius:9px; text-decoration:none; transition:transform .15s, box-shadow .2s, background .2s; box-shadow:0 8px 24px -10px rgba(47,109,255,0.8);" style-hover="background:#3f7bff; transform:translateY(-1px);">Install keel</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <header style="position:relative; z-index:2; max-width:1200px; margin:0 auto; padding:64px 28px 30px; display:grid; grid-template-columns:1fr 1fr; gap:54px; align-items:center;">
+    <div>
+      <div style="display:inline-flex; align-items:center; gap:9px; font-family:'JetBrains Mono',monospace; font-size:11.5px; letter-spacing:0.12em; color:#8b9bff; text-transform:uppercase; padding:6px 12px; border:1px solid rgba(139,155,255,0.28); border-radius:100px; background:rgba(139,155,255,0.06);">
+        <span style="width:6px; height:6px; border-radius:50%; background:#2dd4bf; box-shadow:0 0 8px #2dd4bf; animation:glowPulse 2s ease-in-out infinite;"></span>
+        Controlled execution governance for AI coding agents
+      </div>
+      <h1 style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:clamp(42px,5.6vw,70px); line-height:1.02; letter-spacing:-0.035em; margin:22px 0 0;">Keep your coding agents <span style="color:#2f6dff;">on course.</span></h1>
+      <p style="font-size:18.5px; line-height:1.6; color:#9aa7bd; max-width:520px; margin:22px 0 0;">keel governs Claude Code, Codex, and any agent that reads markdown — keeping every build <span style="color:#cdd6e6;">on scope</span>, <span style="color:#cdd6e6;">on record</span>, and <span style="color:#cdd6e6;">reversible</span>. It's the load-bearing structure beneath an AI-driven build.</p>
+      <div style="display:flex; align-items:center; gap:14px; margin-top:30px; flex-wrap:wrap;">
+        <a href="#install" style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15.5px; color:#fff; background:#2f6dff; padding:13px 22px; border-radius:11px; text-decoration:none; transition:transform .15s, box-shadow .2s, background .2s; box-shadow:0 12px 34px -12px rgba(47,109,255,0.9);" style-hover="background:#3f7bff; transform:translateY(-2px);">Install keel</a>
+        <a href="#how" style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15.5px; color:#cdd6e6; background:transparent; padding:13px 22px; border-radius:11px; text-decoration:none; border:1px solid rgba(120,140,180,0.24); transition:border .2s, color .2s;" style-hover="border-color:rgba(120,140,180,0.5); color:#fff;">See how it works →</a>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; margin-top:24px;">
+        <div style="display:flex; align-items:center; gap:12px; font-family:'JetBrains Mono',monospace; font-size:14px; color:#cdd6e6; background:#0b1120; border:1px solid rgba(120,140,180,0.16); border-radius:11px; padding:11px 15px;">
+          <span style="color:#5e6b82;">$</span> brew install keel
+          <button onClick="{{ copyInstall }}" style="margin-left:6px; background:rgba(47,109,255,0.12); color:#7ea3ff; border:1px solid rgba(47,109,255,0.3); border-radius:7px; padding:4px 9px; font-family:'JetBrains Mono',monospace; font-size:11.5px; cursor:pointer; transition:background .2s;" style-hover="background:rgba(47,109,255,0.24);">{{ copyLabel }}</button>
+        </div>
+      </div>
+      <div style="margin-top:26px; font-family:'JetBrains Mono',monospace; font-size:12px; color:#5e6b82; letter-spacing:0.02em;">WORKS WITH&nbsp;&nbsp;Claude&nbsp;Code&nbsp;&nbsp;·&nbsp;&nbsp;Codex&nbsp;&nbsp;·&nbsp;&nbsp;any&nbsp;agent&nbsp;that&nbsp;reads&nbsp;markdown</div>
+    </div>
+
+    <!-- animated phase-flow card -->
+    <div style="position:relative; animation:floatY 7s ease-in-out infinite;">
+      <div style="position:relative; background:linear-gradient(180deg,#0c1426,#0a1019); border:1px solid rgba(120,140,180,0.16); border-radius:18px; padding:20px 22px 22px; box-shadow:0 40px 90px -40px rgba(0,0,0,0.9), 0 0 0 1px rgba(47,109,255,0.06);">
+        <!-- card head -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:13px; color:#cdd6e6;"><span style="color:#5e6b82;">›</span> /run-phase 2<span style="display:inline-block; width:8px; height:15px; background:#2f6dff; margin-left:3px; vertical-align:-2px; animation:blink 1.1s step-end infinite;"></span></div>
+          <div style="display:inline-flex; align-items:center; gap:7px; font-family:'JetBrains Mono',monospace; font-size:11px; color:#2dd4bf;"><span style="width:6px;height:6px;border-radius:50%;background:#2dd4bf;box-shadow:0 0 7px #2dd4bf;animation:glowPulse 1.8s ease-in-out infinite;"></span>governing</div>
+        </div>
+
+        <!-- rail -->
+        <div style="position:relative; height:118px; margin:6px 0 8px;">
+          <div style="position:absolute; left:6%; right:6%; top:18px; height:2px; background:linear-gradient(90deg,rgba(47,109,255,0) 0%,#2f6dff 50%,rgba(47,109,255,0) 100%); background-size:200% 100%; animation:lineFlow 3.4s linear infinite; opacity:.85;"></div>
+          <div style="position:absolute; left:6%; right:6%; top:18px; height:2px; background:rgba(120,140,180,0.16);"></div>
+          <!-- traveling marker -->
+          <div style="position:absolute; top:18px; left:6%; transform:translate(-50%,-50%); animation:keelRun 9s ease-in-out infinite; z-index:4;">
+            <div style="width:16px; height:16px; border-radius:50%; background:#2f6dff; box-shadow:0 0 0 4px rgba(47,109,255,0.22),0 0 18px 4px rgba(47,109,255,0.6);"></div>
+          </div>
+          <!-- nodes -->
+          <div style="position:absolute; inset:0;">
+            <div style="position:absolute; left:6%; top:0; transform:translateX(-50%);">
+              <div style="width:13px;height:13px;border-radius:50%;background:#0a1019;border:2px solid #2f6dff;margin-top:12px;animation:nodePulse 9s ease-in-out infinite;animation-delay:0s;"></div>
+              <div style="position:absolute;top:34px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:11px;color:#9fb2d6;white-space:nowrap;">plan</div>
+              <div style="position:absolute;top:58px;left:50%;width:7px;height:7px;background:#2f6dff;animation:dotPulse 9s ease-in-out infinite;animation-delay:0s;"></div>
+            </div>
+            <div style="position:absolute; left:35.333%; top:0; transform:translateX(-50%);">
+              <div style="width:13px;height:13px;border-radius:50%;background:#0a1019;border:2px solid #2f6dff;margin-top:12px;animation:nodePulse 9s ease-in-out infinite;animation-delay:-6.7s;"></div>
+              <div style="position:absolute;top:34px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:11px;color:#9fb2d6;white-space:nowrap;">build</div>
+              <div style="position:absolute;top:58px;left:50%;width:7px;height:7px;background:#2f6dff;animation:dotPulse 9s ease-in-out infinite;animation-delay:-6.7s;"></div>
+            </div>
+            <div style="position:absolute; left:64.667%; top:0; transform:translateX(-50%);">
+              <div style="width:13px;height:13px;border-radius:50%;background:#0a1019;border:2px solid #2dd4bf;margin-top:12px;animation:nodePulse 9s ease-in-out infinite;animation-delay:-4.4s;"></div>
+              <div style="position:absolute;top:34px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:11px;color:#9fb2d6;white-space:nowrap;">verify</div>
+              <div style="position:absolute;top:58px;left:50%;width:7px;height:7px;background:#2dd4bf;animation:dotPulse 9s ease-in-out infinite;animation-delay:-4.4s;"></div>
+            </div>
+            <div style="position:absolute; left:94%; top:0; transform:translateX(-50%);">
+              <div style="width:13px;height:13px;border-radius:50%;background:#0a1019;border:2px solid #8b9bff;margin-top:12px;animation:nodePulse 9s ease-in-out infinite;animation-delay:-2.2s;"></div>
+              <div style="position:absolute;top:34px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:11px;color:#9fb2d6;white-space:nowrap;">record</div>
+              <div style="position:absolute;top:58px;left:50%;width:7px;height:7px;background:#8b9bff;animation:dotPulse 9s ease-in-out infinite;animation-delay:-2.2s;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- audit feed -->
+        <div style="border-top:1px solid rgba(120,140,180,0.12); margin-top:14px; padding-top:14px; display:flex; flex-direction:column; gap:7px; font-family:'JetBrains Mono',monospace; font-size:12px;">
+          <div style="display:flex; gap:11px; opacity:0; animation:auditFade .5s ease forwards; animation-delay:.2s;"><span style="color:#46536b;">09:24:01</span><span style="color:#8b9bff; width:38px;">rule</span><span style="color:#aeb9cd;">agent-rules.md → constitution loaded</span></div>
+          <div style="display:flex; gap:11px; opacity:0; animation:auditFade .5s ease forwards; animation-delay:.7s;"><span style="color:#46536b;">09:24:02</span><span style="color:#c7d2e4; width:38px;">run</span><span style="color:#aeb9cd;">phase 2 · edit api/routes.go</span></div>
+          <div style="display:flex; gap:11px; opacity:0; animation:auditFade .5s ease forwards; animation-delay:1.2s;"><span style="color:#46536b;">09:24:03</span><span style="color:#2dd4bf; width:38px;">ok</span><span style="color:#aeb9cd;">exit-criteria 4/4 · gate written</span></div>
+          <div style="display:flex; gap:11px; opacity:0; animation:auditFade .5s ease forwards; animation-delay:1.7s;"><span style="color:#46536b;">09:24:04</span><span style="color:#2f6dff; width:38px;">snap</span><span style="color:#aeb9cd;">phase_2.rollback.json · reversible</span></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- PROBLEM -->
+  <section data-rev="0" style="{{ reveal.s0 }}">
+    <div style="font-family:'JetBrains Mono',monospace; font-size:11.5px; letter-spacing:0.16em; color:#5e6b82; text-transform:uppercase;">The problem</div>
+    <h2 style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:clamp(28px,3.6vw,42px); letter-spacing:-0.025em; margin:14px 0 0; max-width:680px;">Capable. <span style="color:#5e6b82;">Unconstrained.</span></h2>
+    <p style="font-size:18px; line-height:1.6; color:#9aa7bd; max-width:620px; margin:16px 0 44px;">AI agents write code fast — and drift just as fast. Three failure modes, every run.</p>
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:18px;">
+      <div style="background:#0b1120; border:1px solid rgba(120,140,180,0.12); border-radius:16px; padding:26px; transition:border .25s, transform .25s;" style-hover="border-color:rgba(47,109,255,0.4); transform:translateY(-3px);">
+        <div style="width:34px;height:34px;border-radius:9px;background:rgba(47,109,255,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:16px;"><span style="width:14px;height:14px;border:2px solid #2f6dff;border-radius:4px;transform:rotate(45deg);display:block;"></span></div>
+        <h3 style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:18.5px; margin:0 0 8px;">They over-build</h3>
+        <p style="font-size:15px; line-height:1.55; color:#8b96a8; margin:0;">Scope creep past the spec — features, files, and abstractions nobody asked for.</p>
+      </div>
+      <div style="background:#0b1120; border:1px solid rgba(120,140,180,0.12); border-radius:16px; padding:26px; transition:border .25s, transform .25s;" style-hover="border-color:rgba(47,109,255,0.4); transform:translateY(-3px);">
+        <div style="width:34px;height:34px;border-radius:9px;background:rgba(47,109,255,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:16px;"><span style="width:16px;height:2px;background:#2f6dff;display:block;box-shadow:0 5px 0 #2f6dff,0 -5px 0 #2f6dff;"></span></div>
+        <h3 style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:18.5px; margin:0 0 8px;">They skip verification</h3>
+        <p style="font-size:15px; line-height:1.55; color:#8b96a8; margin:0;">Phases close without ever proving the exit criteria were actually met.</p>
+      </div>
+      <div style="background:#0b1120; border:1px solid rgba(120,140,180,0.12); border-radius:16px; padding:26px; transition:border .25s, transform .25s;" style-hover="border-color:rgba(47,109,255,0.4); transform:translateY(-3px);">
+        <div style="width:34px;height:34px;border-radius:9px;background:rgba(47,109,255,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:16px;"><span style="width:14px;height:14px;border:2px solid #2f6dff;border-radius:50%;display:block;"></span></div>
+        <h3 style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:18.5px; margin:0 0 8px;">They leave no record</h3>
+        <p style="font-size:15px; line-height:1.55; color:#8b96a8; margin:0;">No audit trail, no rollback point. When something breaks, you can't see why or undo it.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS / KEEL LOOP -->
+  <section id="how" data-rev="1" style="{{ reveal.s1 }}">
+    <div style="font-family:'JetBrains Mono',monospace; font-size:11.5px; letter-spacing:0.16em; color:#2f6dff; text-transform:uppercase;">The keel loop</div>
+    <h2 style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:clamp(28px,3.6vw,42px); letter-spacing:-0.025em; margin:14px 0 0; max-width:680px;">Four guarantees, every phase.</h2>
+    <p style="font-size:18px; line-height:1.6; color:#9aa7bd; max-width:620px; margin:16px 0 44px;">Run <span style="color:#cdd6e6;">keel init</span> and it installs a harness of commands, rules, and gate files the agent operates inside — markdown it reads before it writes.</p>
+    <div style="display:flex; flex-direction:column; gap:0; position:relative;">
+      <div style="position:absolute; left:23px; top:34px; bottom:34px; width:2px; background:linear-gradient(180deg,#2f6dff,#8b9bff); opacity:.4;"></div>
+      <div style="display:flex; gap:24px; padding:20px 0; align-items:flex-start;">
+        <div style="flex:none; width:48px; height:48px; border-radius:12px; background:#0c1426; border:1px solid rgba(47,109,255,0.4); display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-weight:700; color:#2f6dff; z-index:2;">01</div>
+        <div style="padding-top:3px;"><h3 style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:21px; margin:0 0 6px;">Rules before code</h3><p style="font-size:16px; line-height:1.55; color:#8b96a8; margin:0; max-width:640px;">The agent reads <span style="color:#cdd6e6;">agent-rules.md</span> — your repo constitution — before it writes a single line. Scope, tech stack, and conventions, declared up front.</p></div>
+      </div>
+      <div style="display:flex; gap:24px; padding:20px 0; align-items:flex-start;">
+        <div style="flex:none; width:48px; height:48px; border-radius:12px; background:#0c1426; border:1px solid rgba(47,109,255,0.4); display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-weight:700; color:#2f6dff; z-index:2;">02</div>
+        <div style="padding-top:3px;"><h3 style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:21px; margin:0 0 6px;">One phase at a time</h3><p style="font-size:16px; line-height:1.55; color:#8b96a8; margin:0; max-width:640px;">Each <span style="color:#cdd6e6;">/run-phase N</span> runs exactly one phase, governed by its phase TDD. The gate file doesn't get written until the <span style="color:#cdd6e6;">exit criteria</span> actually pass. No skipping ahead.</p></div>
+      </div>
+      <div style="display:flex; gap:24px; padding:20px 0; align-items:flex-start;">
+        <div style="flex:none; width:48px; height:48px; border-radius:12px; background:#0c1426; border:1px solid rgba(45,212,191,0.45); display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-weight:700; color:#2dd4bf; z-index:2;">03</div>
+        <div style="padding-top:3px;"><h3 style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:21px; margin:0 0 6px;">Audit on every action</h3><p style="font-size:16px; line-height:1.55; color:#8b96a8; margin:0; max-width:640px;">Every phase, tool call, and token is appended to an <span style="color:#cdd6e6;">events.jsonl</span> ledger. Query it after the fact with <span style="color:#cdd6e6;">keel report</span>.</p></div>
+      </div>
+      <div style="display:flex; gap:24px; padding:20px 0; align-items:flex-start;">
+        <div style="flex:none; width:48px; height:48px; border-radius:12px; background:#0c1426; border:1px solid rgba(139,155,255,0.45); display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-weight:700; color:#8b9bff; z-index:2;">04</div>
+        <div style="padding-top:3px;"><h3 style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:21px; margin:0 0 6px;">Reversible by design</h3><p style="font-size:16px; line-height:1.55; color:#8b96a8; margin:0; max-width:640px;">Each phase writes a <span style="color:#cdd6e6;">rollback DAG</span>. <span style="color:#cdd6e6;">keel rollback N</span> unwinds a phase and everything downstream — back to a known-good keel.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INTERACTIVE DEMO -->
+  <section id="demo" data-rev="2" style="{{ reveal.s2 }}">
+    <div style="font-family:'JetBrains Mono',monospace; font-size:11.5px; letter-spacing:0.16em; color:#2dd4bf; text-transform:uppercase;">Live demo</div>
+    <h2 style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:clamp(28px,3.6vw,42px); letter-spacing:-0.025em; margin:14px 0 0; max-width:680px;">Run a governed build.</h2>
+    <p style="font-size:18px; line-height:1.6; color:#9aa7bd; max-width:640px; margin:16px 0 36px;">Advance phases one at a time. Watch exit criteria verify, the audit log fill, and snapshots drop — then roll any phase back.</p>
+
+    <div style="background:linear-gradient(180deg,#0c1426,#090f1a); border:1px solid rgba(120,140,180,0.16); border-radius:18px; overflow:hidden; box-shadow:0 40px 90px -50px rgba(0,0,0,0.9);">
+      <!-- console head -->
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid rgba(120,140,180,0.12); background:rgba(255,255,255,0.012);">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:13px; color:#cdd6e6;"><span style="color:#5e6b82;">›</span> {{ cmdText }}<span style="display:inline-block; width:8px; height:14px; background:#2f6dff; margin-left:3px; vertical-align:-2px; animation:blink 1.1s step-end infinite;"></span></div>
+        <div style="display:flex; align-items:center; gap:16px; font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#5e6b82;">
+          <span>{{ passedCount }}/5 passed</span><span>·</span><span>{{ revertsCount }} reverts</span>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1.15fr 1fr;">
+        <!-- phase board -->
+        <div style="padding:22px; display:flex; flex-direction:column; gap:11px; border-right:1px solid rgba(120,140,180,0.1);">
+          <sc-for list="{{ phaseRows }}" as="ph" hint-placeholder-count="5">
+            <div style="{{ ph.cardStyle }}">
+              <div style="display:flex; align-items:center; gap:13px;">
+                <div style="{{ ph.numStyle }}">{{ ph.num }}</div>
+                <div style="flex:1; min-width:0;">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px; color:#eef2f8;">{{ ph.name }}</span>
+                    <span style="{{ ph.statusStyle }}">{{ ph.statusLabel }}</span>
+                  </div>
+                  <div style="font-size:12.5px; color:#6b7689; margin-top:2px;">{{ ph.desc }}</div>
+                </div>
+              </div>
+              <sc-if value="{{ ph.showProgress }}" hint-placeholder-val="{{ false }}">
+                <div style="height:4px; background:rgba(120,140,180,0.14); border-radius:3px; margin-top:13px; overflow:hidden;"><div style="{{ ph.progressStyle }}"></div></div>
+              </sc-if>
+              <div style="display:flex; flex-direction:column; gap:7px; margin-top:12px;">
+                <sc-for list="{{ ph.criteriaRows }}" as="c" hint-placeholder-count="2">
+                  <div style="display:flex; align-items:center; gap:9px; font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.5;">
+                    <span style="{{ c.markStyle }}">{{ c.mark }}</span>
+                    <span style="{{ c.textStyle }}">{{ c.text }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <!-- audit + snapshots -->
+        <div style="display:flex; flex-direction:column;">
+          <div style="padding:18px 20px 10px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.14em; color:#5e6b82; text-transform:uppercase;">Audit log · append-only</div>
+          <div style="flex:1; padding:0 20px 14px; display:flex; flex-direction:column; gap:7px; font-family:'JetBrains Mono',monospace; font-size:12px; min-height:230px; max-height:300px; overflow:auto;">
+            <sc-if value="{{ auditEmpty }}" hint-placeholder-val="{{ false }}">
+              <div style="color:#46536b; font-style:italic;">no events yet — run a phase to begin governing.</div>
+            </sc-if>
+            <sc-for list="{{ auditRows }}" as="a" hint-placeholder-count="0">
+              <div style="display:flex; gap:10px; align-items:baseline;">
+                <span style="color:#46536b; flex:none;">{{ a.time }}</span>
+                <span style="{{ a.tagStyle }}">{{ a.tag }}</span>
+                <span style="{{ a.textStyle }}">{{ a.text }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="border-top:1px solid rgba(120,140,180,0.1); padding:14px 20px;">
+            <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.14em; color:#5e6b82; text-transform:uppercase; margin-bottom:10px;">Snapshots</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; min-height:28px;">
+              <sc-if value="{{ snapsEmpty }}" hint-placeholder-val="{{ false }}">
+                <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#46536b; font-style:italic;">none yet</span>
+              </sc-if>
+              <sc-for list="{{ snapshotRows }}" as="sn" hint-placeholder-count="0">
+                <div style="display:inline-flex; align-items:center; gap:7px; font-family:'JetBrains Mono',monospace; font-size:12px; color:#9fb2d6; background:rgba(47,109,255,0.1); border:1px solid rgba(47,109,255,0.28); border-radius:8px; padding:5px 10px;">
+                  <span style="width:6px;height:6px;background:#2f6dff;transform:rotate(45deg);display:block;"></span>{{ sn.label }}
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- controls -->
+      <div style="display:flex; align-items:center; gap:12px; padding:16px 20px; border-top:1px solid rgba(120,140,180,0.12); background:rgba(255,255,255,0.012); flex-wrap:wrap;">
+        <button onClick="{{ runPhase }}" disabled="{{ runDisabled }}" style="{{ runBtnStyle }}">{{ runLabel }}</button>
+        <button onClick="{{ rollback }}" disabled="{{ rollbackDisabled }}" style="{{ rollbackBtnStyle }}">↶ Roll back last phase</button>
+        <button onClick="{{ reset }}" style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14px; color:#8b96a8; background:transparent; border:none; cursor:pointer; padding:11px 10px; transition:color .2s;" style-hover="color:#cdd6e6;">Reset</button>
+        <div style="flex:1;"></div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#46536b;">{{ controlsHint }}</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURE BAND -->
+  <section data-rev="3" style="{{ reveal.s3 }}">
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px;">
+      <div style="background:#0b1120; border:1px solid rgba(120,140,180,0.12); border-radius:14px; padding:22px;"><div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px; color:#2f6dff; margin-bottom:8px;">Single Go binary</div><div style="font-size:14px; color:#8b96a8; line-height:1.5;">Built on cobra + go:embed. Minimal deps, no runtime, no daemon.</div></div>
+      <div style="background:#0b1120; border:1px solid rgba(120,140,180,0.12); border-radius:14px; padding:22px;"><div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px; color:#2f6dff; margin-bottom:8px;">Markdown-native</div><div style="font-size:14px; color:#8b96a8; line-height:1.5;">Rules, slash commands, and phase TDDs are plain markdown the agent already reads.</div></div>
+      <div style="background:#0b1120; border:1px solid rgba(120,140,180,0.12); border-radius:14px; padding:22px;"><div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px; color:#2f6dff; margin-bottom:8px;">Agent-agnostic</div><div style="font-size:14px; color:#8b96a8; line-height:1.5;">Claude Code, Codex — anything that reads files and slash commands.</div></div>
+      <div style="background:#0b1120; border:1px solid rgba(120,140,180,0.12); border-radius:14px; padding:22px;"><div style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px; color:#2f6dff; margin-bottom:8px;">Git-friendly</div><div style="font-size:14px; color:#8b96a8; line-height:1.5;">The audit ledger and snapshots live in .agent/, versioned with your repo.</div></div>
+    </div>
+  </section>
+
+  <!-- COMMANDS / DOCS -->
+  <section id="commands" data-rev="5" style="{{ reveal.s5 }}">
+    <div style="font-family:'JetBrains Mono',monospace; font-size:11.5px; letter-spacing:0.16em; color:#8b9bff; text-transform:uppercase;">Reference</div>
+    <h2 style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:clamp(28px,3.6vw,42px); letter-spacing:-0.025em; margin:14px 0 0; max-width:680px;">Two surfaces, one harness.</h2>
+    <p style="font-size:18px; line-height:1.6; color:#9aa7bd; max-width:640px; margin:16px 0 40px;">Your agent drives the build through <span style="color:#cdd6e6;">slash commands</span>. You query, verify, and roll back from the <span style="color:#cdd6e6;">CLI</span>. Both read and write the same gate files and ledger.</p>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px;">
+      <!-- slash commands -->
+      <div style="background:#0b1120; border:1px solid rgba(120,140,180,0.12); border-radius:16px; padding:24px 24px 10px;">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:18px;">
+          <span style="width:7px; height:7px; border-radius:50%; background:#8b9bff; box-shadow:0 0 8px #8b9bff;"></span>
+          <span style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px;">Slash commands</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#5e6b82;">read by your agent</span>
+        </div>
+        <sc-for list="{{ slashCmds }}" as="c" hint-placeholder-count="6">
+          <div style="display:flex; flex-direction:column; gap:3px; padding:11px 0; border-top:1px solid rgba(120,140,180,0.08);">
+            <code style="font-family:'JetBrains Mono',monospace; font-size:13.5px; color:#7ea3ff;">{{ c.cmd }}</code>
+            <span style="font-size:13.5px; color:#8b96a8; line-height:1.45;">{{ c.desc }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- cli commands -->
+      <div style="background:#0b1120; border:1px solid rgba(120,140,180,0.12); border-radius:16px; padding:24px 24px 10px;">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:18px;">
+          <span style="width:7px; height:7px; border-radius:50%; background:#2dd4bf; box-shadow:0 0 8px #2dd4bf;"></span>
+          <span style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px;">CLI</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#5e6b82;">run in your shell</span>
+        </div>
+        <sc-for list="{{ cliCmds }}" as="c" hint-placeholder-count="7">
+          <div style="display:flex; flex-direction:column; gap:3px; padding:11px 0; border-top:1px solid rgba(120,140,180,0.08);">
+            <code style="font-family:'JetBrains Mono',monospace; font-size:13.5px; color:#7ee8d2;">{{ c.cmd }}</code>
+            <span style="font-size:13.5px; color:#8b96a8; line-height:1.45;">{{ c.desc }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- install -->
+    <div style="margin-top:18px; display:grid; grid-template-columns:1fr 1fr; gap:18px;">
+      <div style="background:#0a1019; border:1px solid rgba(47,109,255,0.22); border-radius:16px; overflow:hidden;">
+        <div style="display:flex; align-items:center; gap:10px; padding:14px 22px; border-bottom:1px solid rgba(120,140,180,0.1);">
+          <span style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px;">Install with Homebrew</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#2dd4bf;">recommended</span>
+        </div>
+        <pre style="margin:0; padding:18px 22px; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.85; color:#cdd6e6; overflow:auto;"><span style="color:#5e6b82;">$</span> brew tap joeymiller/keel
+<span style="color:#5e6b82;">$</span> brew install keel</pre>
+      </div>
+      <div style="background:#0a1019; border:1px solid rgba(120,140,180,0.12); border-radius:16px; overflow:hidden;">
+        <div style="display:flex; align-items:center; gap:10px; padding:14px 22px; border-bottom:1px solid rgba(120,140,180,0.1);">
+          <span style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px;">Build from source</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#5e6b82;">requires Go 1.21+</span>
+        </div>
+        <pre style="margin:0; padding:18px 22px; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.85; color:#cdd6e6; overflow:auto;"><span style="color:#5e6b82;">$</span> git clone https://github.com/joeymiller/keel
+<span style="color:#5e6b82;">$</span> cd keel && go build -o bin/keel ./cmd/keel</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section id="install" data-rev="4" style="{{ reveal.s4 }}">
+    <div style="position:relative; background:linear-gradient(180deg,#0c1426,#0a1019); border:1px solid rgba(47,109,255,0.22); border-radius:22px; padding:56px 48px; overflow:hidden; text-align:center;">
+      <div style="position:absolute; top:-120px; left:50%; transform:translateX(-50%); width:680px; height:420px; background:radial-gradient(closest-side,rgba(47,109,255,0.22),transparent 72%); pointer-events:none;"></div>
+      <div style="position:relative;">
+        <svg width="44" height="44" viewBox="0 0 32 32" fill="none" aria-hidden="true" style="display:block; margin:0 auto 20px;">
+          <circle cx="16" cy="16" r="13.4" stroke="#e9eef7" stroke-width="1.8"/>
+          <path d="M16 6.2 L21 17 L16 14.4 L11 17 Z" fill="#2f6dff"/>
+          <path d="M11.2 19 L16 25.8 L20.8 19 L16 21.4 Z" fill="#9fb2d6"/>
+        </svg>
+        <h2 style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:clamp(30px,4vw,48px); letter-spacing:-0.03em; margin:0;">Lay the keel before you build.</h2>
+        <p style="font-size:18px; color:#9aa7bd; max-width:520px; margin:16px auto 32px; line-height:1.6;">Install in seconds. Your next agent run starts on scope, on record, and reversible.</p>
+        <div style="display:inline-flex; align-items:center; gap:12px; font-family:'JetBrains Mono',monospace; font-size:15px; color:#cdd6e6; background:#070b12; border:1px solid rgba(120,140,180,0.2); border-radius:12px; padding:14px 18px;">
+          <span style="color:#5e6b82;">$</span> brew install keel
+          <button onClick="{{ copyInstall }}" style="margin-left:8px; background:rgba(47,109,255,0.14); color:#7ea3ff; border:1px solid rgba(47,109,255,0.34); border-radius:7px; padding:5px 11px; font-family:'JetBrains Mono',monospace; font-size:12px; cursor:pointer; transition:background .2s;" style-hover="background:rgba(47,109,255,0.28);">{{ copyLabel }}</button>
+        </div>
+        <div style="display:flex; gap:14px; justify-content:center; margin-top:30px; flex-wrap:wrap;">
+          <a href="#commands" style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15.5px; color:#fff; background:#2f6dff; padding:13px 24px; border-radius:11px; text-decoration:none; transition:transform .15s, background .2s; box-shadow:0 12px 34px -12px rgba(47,109,255,0.9);" style-hover="background:#3f7bff; transform:translateY(-2px);">Read the docs</a>
+          <a href="https://github.com/joeymiller/keel" style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15.5px; color:#cdd6e6; background:transparent; padding:13px 24px; border-radius:11px; text-decoration:none; border:1px solid rgba(120,140,180,0.24); transition:border .2s, color .2s;" style-hover="border-color:rgba(120,140,180,0.5); color:#fff;">View on GitHub</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer style="position:relative; z-index:2; border-top:1px solid rgba(120,140,180,0.1); max-width:1200px; margin:0 auto; padding:34px 28px; display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="16" r="13.4" stroke="#9fb2d6" stroke-width="1.9"/><path d="M16 6.2 L21 17 L16 14.4 L11 17 Z" fill="#2f6dff"/><path d="M11.2 19 L16 25.8 L20.8 19 L16 21.4 Z" fill="#6b7689"/></svg>
+      <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px;"><span style="color:#2f6dff;">k</span>eel</span>
+      <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#46536b; margin-left:8px;">Precision engineering for AI-driven builds.</span>
+    </div>
+    <div style="display:flex; gap:22px; font-size:13.5px; color:#6b7689;">
+      <a href="#how" style="color:inherit; text-decoration:none;" style-hover="color:#cdd6e6;">Docs</a>
+      <a href="#demo" style="color:inherit; text-decoration:none;" style-hover="color:#cdd6e6;">Demo</a>
+      <a href="https://github.com/joeymiller/keel" style="color:inherit; text-decoration:none;" style-hover="color:#cdd6e6;">GitHub</a>
+      <span style="color:#46536b;">© 2026 keel</span>
+    </div>
+  </footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    phases: [
+      { id:'scaffold', name:'scaffold',   desc:'project structure & deps',  criteria:['structure matches spec','deps locked'], file:'go.mod', cmd:'go mod tidy' },
+      { id:'schema',   name:'data-model', desc:'schema & migrations',       criteria:['migrations valid','no destructive drops'], file:'db/schema.sql', cmd:'migrate up' },
+      { id:'api',      name:'api',        desc:'routes & handlers',         criteria:['routes typed','errors handled'], file:'api/routes.go', cmd:'go build ./...' },
+      { id:'auth',     name:'auth',       desc:'tokens & sessions',         criteria:['tokens scoped','no secrets logged'], file:'auth/session.go', cmd:'gosec ./...' },
+      { id:'tests',    name:'tests',      desc:'coverage & ship',           criteria:['coverage ≥ 80%','all green'], file:'tests/', cmd:'go test ./...' },
+    ],
+    current: 0,
+    statusById: {},
+    checks: {},
+    running: false,
+    progress: 0,
+    audit: [],
+    snapshots: [],
+    reverts: 0,
+    shipped: false,
+    copied: false,
+    revealed: {},
+  };
+
+  componentWillUnmount(){ this._clearTimers(); }
+  _clearTimers(){ if(this._iv) clearInterval(this._iv); (this._timers||[]).forEach(t=>clearTimeout(t)); this._timers=[]; }
+  _later(fn, ms){ (this._timers = this._timers||[]).push(setTimeout(fn, ms)); }
+
+  _clock(){
+    this._sec = (this._sec==null ? 0 : this._sec + 1);
+    const t = 9*3600 + 24*60 + this._sec;
+    const p = n => String(n).padStart(2,'0');
+    return p(Math.floor(t/3600)%24)+':'+p(Math.floor(t/60)%60)+':'+p(t%60);
+  }
+  _push(kind, text){
+    this.setState(s => ({ audit: [...s.audit, { kind, text, time:this._clock() }].slice(-60) }));
+  }
+
+  componentDidMount(){
+    try{
+      const els = Array.from(document.querySelectorAll('[data-rev]'));
+      const revealOne = (idx)=>{
+        if(this.state.revealed[idx]) return;
+        this.setState(s => ({ revealed: { ...s.revealed, [idx]: 1 } }));        // 1 = animating in
+        this._later(()=> this.setState(s => ({ revealed: { ...s.revealed, [idx]: 2 } })), 780); // 2 = settled, static visible
+      };
+      if('IntersectionObserver' in window){
+        const io = new IntersectionObserver((ents)=>{
+          ents.forEach(e=>{ if(e.isIntersecting){ revealOne(Number(e.target.dataset.rev)); io.unobserve(e.target); } });
+        }, { threshold:0.12, rootMargin:'0px 0px -8% 0px' });
+        els.forEach(el=>io.observe(el));
+      } else {
+        els.forEach(el=>revealOne(Number(el.dataset.rev)));
+      }
+      this._later(()=>{ const all={}; els.forEach(el=>{ all[Number(el.dataset.rev)]=2; }); this.setState(s=>({ revealed:{ ...s.revealed, ...all } })); }, 1800);
+    }catch(e){}
+  }
+
+  copyInstall = () => {
+    try{ navigator.clipboard && navigator.clipboard.writeText('brew tap joeymiller/keel\nbrew install keel'); }catch(e){}
+    this.setState({ copied:true });
+    this._later(()=>this.setState({ copied:false }), 1400);
+  };
+
+  runPhase = () => {
+    const s = this.state;
+    if(s.running || s.shipped) return;
+    const i = s.current;
+    const ph = s.phases[i];
+    if(!ph) return;
+    this.setState({ running:true, progress:0, checks:{ ...s.checks, [ph.id]:0 } });
+    this._push('rule', `agent-rules.md → constitution loaded for ${ph.name}`);
+    this._later(()=> this._push('action', `edit ${ph.file}`), 360);
+    this._later(()=> this._push('action', `run ${ph.cmd}`), 820);
+    let p = 0;
+    this._iv = setInterval(()=>{
+      p += 5 + Math.random()*7;
+      if(p >= 100){ p = 100; clearInterval(this._iv); this._iv=null; this._finish(i); }
+      this.setState({ progress: Math.min(100, p) });
+    }, 78);
+  };
+
+  _finish(i){
+    const ph = this.state.phases[i];
+    ph.criteria.forEach((c, k) => {
+      this._later(()=>{
+        this.setState(s => ({ checks: { ...s.checks, [ph.id]: k+1 } }));
+        this._push('verify', `exit-criteria ✓ ${c}`);
+      }, 230*(k+1));
+    });
+    this._later(()=>{
+      this.setState(s => {
+        const next = i+1;
+        const shipped = next >= s.phases.length;
+        return {
+          statusById: { ...s.statusById, [ph.id]:'passed' },
+          snapshots: [...s.snapshots, { phase:ph.name, n:s.snapshots.length+1 }],
+          current: next, running:false, progress:0, shipped,
+        };
+      });
+      this._push('snap', `snapshot saved → @${ph.name} · reversible`);
+      if(i+1 >= this.state.phases.length) this._push('ship', 'build complete — fully audited, fully reversible');
+    }, 230*(ph.criteria.length+1) + 240);
+  }
+
+  rollback = () => {
+    const s = this.state;
+    if(s.running || s.snapshots.length === 0) return;
+    const i = s.current - 1;
+    const ph = s.phases[i];
+    const backTo = i > 0 ? s.phases[i-1].name : 'base';
+    this.setState(st => {
+      const statusById = { ...st.statusById }; delete statusById[ph.id];
+      const checks = { ...st.checks }; delete checks[ph.id];
+      return { snapshots: st.snapshots.slice(0,-1), statusById, checks, current:i, shipped:false, reverts: st.reverts+1 };
+    });
+    this._push('undo', `rolled back to @${backTo} · ${ph.name} reverted`);
+  };
+
+  reset = () => {
+    this._clearTimers(); this._sec = null;
+    this.setState({ current:0, statusById:{}, checks:{}, running:false, progress:0, audit:[], snapshots:[], reverts:0, shipped:false });
+  };
+
+  renderVals(){
+    const s = this.state;
+    const ACCENT='#2f6dff', TEAL='#2dd4bf', INDIGO='#8b9bff', SUB='#9aa7bd', MUTE='#5e6b82';
+
+    const phaseRows = s.phases.map((ph, i) => {
+      const passed  = s.statusById[ph.id] === 'passed';
+      const running = s.running && i === s.current;
+      const ready   = !s.running && i === s.current;
+      const locked  = i > s.current;
+      const statusLabel = passed ? 'passed' : running ? 'running' : ready ? 'ready' : 'locked';
+
+      const base = { borderRadius:'13px', padding:'15px 16px', transition:'all .3s ease', background:'#0a1019' };
+      let cardStyle;
+      if(passed)       cardStyle = { ...base, border:'1px solid rgba(45,212,191,0.32)' };
+      else if(running || ready) cardStyle = { ...base, border:'1px solid rgba(47,109,255,0.5)', boxShadow:'0 0 0 1px rgba(47,109,255,0.18), 0 14px 36px -18px rgba(47,109,255,0.7)' };
+      else             cardStyle = { ...base, border:'1px solid rgba(120,140,180,0.1)', opacity:0.5 };
+
+      const numStyle = { flex:'none', width:'34px', height:'34px', borderRadius:'9px', background:'#0c1426',
+        border:`1px solid ${passed?'rgba(45,212,191,0.4)':(running||ready)?'rgba(47,109,255,0.45)':'rgba(120,140,180,0.16)'}`,
+        display:'flex', alignItems:'center', justifyContent:'center',
+        fontFamily:"'Space Grotesk',sans-serif", fontWeight:700, fontSize:'13px', color: passed?TEAL:(running||ready)?ACCENT:'#4b5870' };
+
+      const chipBase = { fontFamily:"'JetBrains Mono',monospace", fontSize:'10.5px', letterSpacing:'0.08em', textTransform:'uppercase', padding:'2px 8px', borderRadius:'100px' };
+      let statusStyle;
+      if(passed)       statusStyle = { ...chipBase, color:TEAL, background:'rgba(45,212,191,0.12)', border:'1px solid rgba(45,212,191,0.3)' };
+      else if(running) statusStyle = { ...chipBase, color:ACCENT, background:'rgba(47,109,255,0.14)', border:'1px solid rgba(47,109,255,0.35)' };
+      else if(ready)   statusStyle = { ...chipBase, color:ACCENT, background:'transparent', border:'1px solid rgba(47,109,255,0.4)' };
+      else             statusStyle = { ...chipBase, color:'#4b5870', background:'transparent', border:'1px solid rgba(120,140,180,0.16)' };
+
+      const checked = passed ? ph.criteria.length : (s.checks[ph.id] || 0);
+      const criteriaRows = ph.criteria.map((c, k) => {
+        const on = passed || k < checked;
+        return { key: ph.id+'-'+k, text:c, mark: on ? '✓' : '○',
+          markStyle:{ color: on ? TEAL : '#33415c', fontWeight:700, width:'13px', display:'inline-block', flex:'none', lineHeight:1.5 },
+          textStyle:{ color: on ? SUB : '#4b5870', whiteSpace:'nowrap', lineHeight:1.5 } };
+      });
+
+      return {
+        key: ph.id, num: String(i+1).padStart(2,'0'), name: ph.name, desc: ph.desc,
+        statusLabel, statusStyle, cardStyle, numStyle,
+        showProgress: running,
+        progressStyle: { width: s.progress+'%', height:'100%', background:`linear-gradient(90deg,${ACCENT},${INDIGO})`, borderRadius:'3px', transition:'width .12s linear' },
+        criteriaRows,
+      };
+    });
+
+    const tagMap = {
+      rule:   { tag:'rule', color:INDIGO },
+      action: { tag:'run',  color:'#c7d2e4' },
+      verify: { tag:'ok',   color:TEAL },
+      snap:   { tag:'snap', color:ACCENT },
+      undo:   { tag:'undo', color:'#f0b45e' },
+      ship:   { tag:'ship', color:TEAL },
+    };
+    const auditRows = s.audit.map((a, i) => {
+      const m = tagMap[a.kind] || { tag:a.kind, color:SUB };
+      return { key:i, time:a.time, tag:m.tag,
+        tagStyle:{ color:m.color, width:'38px', flex:'none' },
+        textStyle:{ color: a.kind==='ship' ? '#cfeee8' : '#aeb9cd' }, text:a.text };
+    });
+
+    const snapshotRows = s.snapshots.map((sn, i) => ({ key:i, label:'@'+sn.phase }));
+
+    const runDisabled = s.running || s.shipped;
+    const rollbackDisabled = s.running || s.snapshots.length === 0;
+    const runLabel = s.shipped ? 'Build shipped ✓' : s.running ? 'Running…' : s.current === 0 ? 'Run phase 01' : 'Run next phase';
+
+    const runBtnStyle = {
+      fontFamily:"'Space Grotesk',sans-serif", fontWeight:600, fontSize:'14px',
+      color: runDisabled ? '#6b7689' : '#fff',
+      background: s.shipped ? 'rgba(45,212,191,0.16)' : runDisabled ? 'rgba(120,140,180,0.12)' : ACCENT,
+      border: s.shipped ? '1px solid rgba(45,212,191,0.4)' : 'none',
+      padding:'11px 20px', borderRadius:'10px', cursor: runDisabled ? 'default':'pointer',
+      transition:'background .2s, transform .15s',
+      boxShadow: runDisabled ? 'none' : '0 10px 28px -14px rgba(47,109,255,0.9)',
+    };
+    if(s.shipped) runBtnStyle.color = TEAL;
+    const rollbackBtnStyle = {
+      fontFamily:"'Space Grotesk',sans-serif", fontWeight:600, fontSize:'14px',
+      color: rollbackDisabled ? '#46536b' : '#cdd6e6',
+      background:'transparent', border:`1px solid ${rollbackDisabled?'rgba(120,140,180,0.12)':'rgba(120,140,180,0.3)'}`,
+      padding:'11px 16px', borderRadius:'10px', cursor: rollbackDisabled ? 'default':'pointer', transition:'border .2s, color .2s',
+    };
+
+    const cmdText = s.shipped ? 'keel report session' : s.running ? `/run-phase ${s.current + 1}` : `/run-phase ${s.current + 1}`;
+    const controlsHint = s.shipped ? 'all phases verified · roll back any time' : s.running ? 'executing under governance…' : 'each phase verifies before the gate opens';
+
+    if(!this._revCache){
+      const PADS = ['80px 28px 30px','70px 28px 30px','70px 28px 30px','60px 28px 30px','80px 28px 90px','70px 28px 30px'];
+      this._revCache = { hidden:[], shown:[], settled:[] };
+      for(let i=0;i<6;i++){
+        const base = { position:'relative', zIndex:2, maxWidth:'1200px', margin:'0 auto', padding:PADS[i] };
+        this._revCache.hidden[i]  = { ...base, opacity:0, transform:'translateY(16px)' };
+        this._revCache.shown[i]   = { ...base, animation:'keelReveal .7s cubic-bezier(.2,.7,.2,1) both' };
+        this._revCache.settled[i] = { ...base, opacity:1, transform:'none' };  // static, never depends on a painted animation
+      }
+    }
+    const reveal = {};
+    for(let i=0;i<6;i++){ const st = s.revealed[i] || 0; reveal['s'+i] = st===2 ? this._revCache.settled[i] : st===1 ? this._revCache.shown[i] : this._revCache.hidden[i]; }
+
+    const bg = this.props.background ?? 'Rhumb lines';
+    const bgCode  = bg === 'Chart + code';
+    const bgRhumb = bg === 'Rhumb lines';
+    const bgDepth = bg === 'Soundings';
+    const bgRoute = bg === 'Passage plot';
+    const bgTopo  = bg === 'Sea chart';
+
+    // dense depth-sounding field (deterministic), like a real chart
+    const soundings = [];
+    let seed = 1337;
+    const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    for (let i = 0; i < 120; i++) {
+      const x = +(2.5 + rnd() * 94).toFixed(2);
+      const y = Math.round(58 + rnd() * 500);
+      const r = rnd();
+      let v;
+      if (r < 0.5) v = 10 + Math.floor(rnd() * 89);
+      else if (r < 0.82) v = 100 + Math.floor(rnd() * 899);
+      else v = 1000 + Math.floor(rnd() * 2900);
+      soundings.push({ key: 's' + i, x, y, v: String(v) });
+    }
+
+    const slashCmds = [
+      { key:'rp0', cmd:'/run-phase 0',          desc:'Bootstrap — generate the TDD, BUILD_MANIFEST, and a TDD for every phase.' },
+      { key:'rpn', cmd:'/run-phase N',          desc:'Execute build phase N under harness governance — exactly one phase.' },
+      { key:'nf',  cmd:'/new-feature "name"',   desc:'Draft a scoped feature workspace under docs/features/{slug}/.' },
+      { key:'af',  cmd:'/approve-feature {slug}', desc:'Renumber and merge feature phases into BUILD_MANIFEST.yaml.' },
+      { key:'rb',  cmd:'/rollback-phase N',     desc:'Interactively roll back phase N and everything downstream.' },
+      { key:'vf',  cmd:'/verify',               desc:'Run harness verification checks against the gate sequence.' },
+    ];
+    const cliCmds = [
+      { key:'init', cmd:'keel init',            desc:'Bootstrap the harness — commands, rules, gates, and .agent/ — into a project.' },
+      { key:'cur',  cmd:'keel current-phase',   desc:'Report the active phase and the last gate that passed.' },
+      { key:'ver',  cmd:'keel verify',          desc:'Check harness consistency: required files, gate sequence, config.' },
+      { key:'plan', cmd:'keel plan-phases',     desc:'Derive a build manifest from the Deliverables in docs/TDD.md.' },
+      { key:'roll', cmd:'keel rollback 3',      desc:'Roll back a phase and all downstream phases that have rollback DAGs.' },
+      { key:'rep',  cmd:'keel report session',  desc:'Query the ledger — phases, tokens, tools, and debug loops.' },
+      { key:'sess', cmd:'keel session start',   desc:'Manage tracking sessions that record every event to events.jsonl.' },
+    ];
+
+    return {
+      reveal,
+      bgCode, bgRhumb, bgDepth, bgRoute, bgTopo, soundings,
+      slashCmds, cliCmds,
+      phaseRows, auditRows, snapshotRows,
+      auditEmpty: s.audit.length === 0,
+      snapsEmpty: s.snapshots.length === 0,
+      runPhase: this.runPhase, rollback: this.rollback, reset: this.reset, copyInstall: this.copyInstall,
+      runDisabled, rollbackDisabled, runLabel, runBtnStyle, rollbackBtnStyle,
+      cmdText, controlsHint,
+      passedCount: Object.keys(s.statusById).length, revertsCount: s.reverts,
+      copyLabel: s.copied ? 'copied ✓' : 'copy',
+    };
+  }
+}
+</script>
+</body>
+</html>

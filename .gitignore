@@ -1,0 +1,15 @@
+# Build output
+bin/
+dist/
+
+# OS files
+.DS_Store
+
+# Runtime state
+.agent/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
