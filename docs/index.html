@@ -494,7 +494,7 @@
           <span style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px;">Install with Homebrew</span>
           <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#2dd4bf;">recommended</span>
         </div>
-        <pre style="margin:0; padding:18px 22px; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.85; color:#cdd6e6; overflow:auto;"><span style="color:#5e6b82;">$</span> brew tap joeymiller/keel
+        <pre style="margin:0; padding:18px 22px; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.85; color:#cdd6e6; overflow:auto;"><span style="color:#5e6b82;">$</span> brew tap locustave/keel
 <span style="color:#5e6b82;">$</span> brew install keel</pre>
       </div>
       <div style="background:#0a1019; border:1px solid rgba(120,140,180,0.12); border-radius:16px; overflow:hidden;">
@@ -502,7 +502,7 @@
           <span style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px;">Build from source</span>
           <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#5e6b82;">requires Go 1.21+</span>
         </div>
-        <pre style="margin:0; padding:18px 22px; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.85; color:#cdd6e6; overflow:auto;"><span style="color:#5e6b82;">$</span> git clone https://github.com/joeymiller/keel
+        <pre style="margin:0; padding:18px 22px; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.85; color:#cdd6e6; overflow:auto;"><span style="color:#5e6b82;">$</span> git clone https://github.com/locustave/keel
 <span style="color:#5e6b82;">$</span> cd keel && go build -o bin/keel ./cmd/keel</pre>
       </div>
     </div>
@@ -526,7 +526,7 @@
         </div>
         <div style="display:flex; gap:14px; justify-content:center; margin-top:30px; flex-wrap:wrap;">
           <a href="#commands" style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15.5px; color:#fff; background:#2f6dff; padding:13px 24px; border-radius:11px; text-decoration:none; transition:transform .15s, background .2s; box-shadow:0 12px 34px -12px rgba(47,109,255,0.9);" style-hover="background:#3f7bff; transform:translateY(-2px);">Read the docs</a>
-          <a href="https://github.com/joeymiller/keel" style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15.5px; color:#cdd6e6; background:transparent; padding:13px 24px; border-radius:11px; text-decoration:none; border:1px solid rgba(120,140,180,0.24); transition:border .2s, color .2s;" style-hover="border-color:rgba(120,140,180,0.5); color:#fff;">View on GitHub</a>
+          <a href="https://github.com/locustave/keel" style="font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15.5px; color:#cdd6e6; background:transparent; padding:13px 24px; border-radius:11px; text-decoration:none; border:1px solid rgba(120,140,180,0.24); transition:border .2s, color .2s;" style-hover="border-color:rgba(120,140,180,0.5); color:#fff;">View on GitHub</a>
         </div>
       </div>
     </div>
@@ -542,7 +542,7 @@
     <div style="display:flex; gap:22px; font-size:13.5px; color:#6b7689;">
       <a href="#how" style="color:inherit; text-decoration:none;" style-hover="color:#cdd6e6;">Docs</a>
       <a href="#demo" style="color:inherit; text-decoration:none;" style-hover="color:#cdd6e6;">Demo</a>
-      <a href="https://github.com/joeymiller/keel" style="color:inherit; text-decoration:none;" style-hover="color:#cdd6e6;">GitHub</a>
+      <a href="https://github.com/locustave/keel" style="color:inherit; text-decoration:none;" style-hover="color:#cdd6e6;">GitHub</a>
       <span style="color:#46536b;">© 2026 keel</span>
     </div>
   </footer>
@@ -607,7 +607,7 @@ class Component extends DCLogic {
   }
 
   copyInstall = () => {
-    try{ navigator.clipboard && navigator.clipboard.writeText('brew tap joeymiller/keel\nbrew install keel'); }catch(e){}
+    try{ navigator.clipboard && navigator.clipboard.writeText('brew tap locustave/keel\nbrew install keel'); }catch(e){}
     this.setState({ copied:true });
     this._later(()=>this.setState({ copied:false }), 1400);
   };
