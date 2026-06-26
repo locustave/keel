@@ -56,6 +56,7 @@ Each phase is:
 
 ```bash
 brew tap locustave/keel
+brew trust locustave/keel
 brew install keel
 ```
 
