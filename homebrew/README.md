@@ -1,11 +1,11 @@
 # homebrew-keel
 
-Homebrew tap for [keel](https://github.com/joeymiller/keel) — controlled execution governance for AI coding agents.
+Homebrew tap for [keel](https://github.com/locustave/keel) — controlled execution governance for AI coding agents.
 
 ## Install
 
 ```bash
-brew tap joeymiller/keel
+brew tap locustave/keel
 brew install keel
 ```
 
@@ -20,7 +20,7 @@ brew upgrade keel
 
 ```bash
 brew uninstall keel
-brew untap joeymiller/keel
+brew untap locustave/keel
 ```
 
 ---

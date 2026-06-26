@@ -11,17 +11,17 @@ How to release keel and distribute it via Homebrew.
 On GitHub, create a new **public** repository named exactly `homebrew-keel` under your org/account.
 
 ```
-github.com/joeymiller/homebrew-keel
+github.com/locustave/homebrew-keel
 ```
 
-The name must start with `homebrew-` — this is how Homebrew resolves `brew tap joeymiller/keel`.
+The name must start with `homebrew-` — this is how Homebrew resolves `brew tap locustave/keel`.
 
 Initialise it with the scaffold in this repo:
 
 ```bash
 cd homebrew/
 git init
-git remote add origin git@github.com:joeymiller/homebrew-keel.git
+git remote add origin git@github.com:locustave/homebrew-keel.git
 git add .
 git commit -m "initial tap scaffold"
 git push -u origin main
@@ -32,7 +32,7 @@ git push -u origin main
 Go to **GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens**.
 
 Create a token with:
-- **Resource owner**: joeymiller (or your account)
+- **Resource owner**: locustave (or your account)
 - **Repository access**: Only `homebrew-keel`
 - **Permissions → Contents**: Read and Write
 
@@ -47,7 +47,7 @@ Go to **keel repo → Settings → Secrets and variables → Actions → New rep
 
 ### 4. Replace placeholder org name
 
-Search for `joeymiller` across:
+Search for `locustave` across:
 - `homebrew/Formula/keel.rb`
 - `homebrew/README.md`
 - `.github/workflows/release.yml` (already uses `${{ github.repository }}` — nothing to change)
@@ -80,7 +80,7 @@ The formula update lands in the tap within ~30 seconds of pushing the tag. Users
 ## User install (after setup)
 
 ```bash
-brew tap joeymiller/keel
+brew tap locustave/keel
 brew install keel
 keel --help
 ```
@@ -90,7 +90,7 @@ keel --help
 ## Install from HEAD (latest main)
 
 ```bash
-brew install joeymiller/keel/keel --HEAD
+brew install locustave/keel/keel --HEAD
 ```
 
 This builds directly from the `main` branch. Useful for testing unreleased changes.

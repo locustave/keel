@@ -55,14 +55,14 @@ Each phase is:
 ### Homebrew (macOS / Linux)
 
 ```bash
-brew tap joeymiller/keel
+brew tap locustave/keel
 brew install keel
 ```
 
 ### From source (requires Go 1.25+)
 
 ```bash
-git clone https://github.com/joeymiller/keel
+git clone https://github.com/locustave/keel
 cd keel
 go build -o bin/keel ./cmd/keel
 sudo mv bin/keel /usr/local/bin/keel
