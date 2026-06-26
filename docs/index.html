@@ -495,6 +495,7 @@
           <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#2dd4bf;">recommended</span>
         </div>
         <pre style="margin:0; padding:18px 22px; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.85; color:#cdd6e6; overflow:auto;"><span style="color:#5e6b82;">$</span> brew tap locustave/keel
+<span style="color:#5e6b82;">$</span> brew trust locustave/keel
 <span style="color:#5e6b82;">$</span> brew install keel</pre>
       </div>
       <div style="background:#0a1019; border:1px solid rgba(120,140,180,0.12); border-radius:16px; overflow:hidden;">
@@ -607,7 +608,7 @@ class Component extends DCLogic {
   }
 
   copyInstall = () => {
-    try{ navigator.clipboard && navigator.clipboard.writeText('brew tap locustave/keel\nbrew install keel'); }catch(e){}
+    try{ navigator.clipboard && navigator.clipboard.writeText('brew tap locustave/keel\nbrew trust locustave/keel\nbrew install keel'); }catch(e){}
     this.setState({ copied:true });
     this._later(()=>this.setState({ copied:false }), 1400);
   };

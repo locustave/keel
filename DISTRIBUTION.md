@@ -81,6 +81,7 @@ The formula update lands in the tap within ~30 seconds of pushing the tag. Users
 
 ```bash
 brew tap locustave/keel
+brew trust locustave/keel
 brew install keel
 keel --help
 ```
